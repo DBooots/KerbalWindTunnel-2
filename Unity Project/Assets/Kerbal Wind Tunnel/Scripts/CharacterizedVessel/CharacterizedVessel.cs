@@ -460,7 +460,7 @@ namespace KerbalWindTunnel.VesselCache
         {
             System.Data.DataSet data = new System.Data.DataSet();
 
-            bodyDrag.WriteToDataSet(data, "bodyDrag_");
+            bodyDrag.WriteToDataSet(data, $"{Localizer.Format("#autoLOC_KWT350")}_");   // "bodyDrag"
             //TODO: ctrlDeltaDragNeg.WriteToDataSet(data, "ctrlNeg_");
             //TODO: ctrlDeltaDragPos.WriteToDataSet(data, "ctrlPos_");
 
@@ -475,7 +475,7 @@ namespace KerbalWindTunnel.VesselCache
                 {
                     string localName = multiple ? $"{name}{setIndex}" : name;
                     System.Data.DataTable curveTable = machCurve.WriteToDataTable();
-                    curveTable.TableName = string.Join("_", localName, "MFactor");
+                    curveTable.TableName = string.Join("_", localName, Localizer.Format("#autoLOC_KWT349"));    // "MFactor"
                     curveTable.Columns[0].ColumnName = Graphing.Graphable.FormatNameAndUnit(Localizer.Format("#autoLOC_KWT301"), "");   // "Mach Number"
                     ds.Tables.Add(curveTable);
                     curveTable = forceCurve.WriteToDataTable();
@@ -487,11 +487,11 @@ namespace KerbalWindTunnel.VesselCache
                 }
             }
 
-            WriteCurveSet(data, surfaceDragP, "surfDrag");
-            WriteCurveSet(data, surfaceDragI, "induDrag");
-            WriteCurveSet(data, bodyLift, "bodyLift");
-            WriteCurveSet(data, surfaceLift, "surfLift");
-            // TODO: induDrag_MFactor = surfLigt_MFactor and one of them should be deleted.
+            WriteCurveSet(data, surfaceDragP, Localizer.Format("#autoLOC_KWT351")); // "surfDrag"
+            WriteCurveSet(data, surfaceDragI, Localizer.Format("#autoLOC_KWT352")); // "induDrag"
+            WriteCurveSet(data, bodyLift, Localizer.Format("#autoLOC_KWT353"));     // "bodyLift"
+            WriteCurveSet(data, surfaceLift, Localizer.Format("#autoLOC_KWT354"));  // "surfLift"
+            // TODO: induDrag_MFactor = surfLift_MFactor and one of them should be deleted.
 
 
             return data;

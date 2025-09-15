@@ -31,7 +31,7 @@ namespace KerbalWindTunnel
                 new DialogGUIContentSizer(UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize, UnityEngine.UI.ContentSizeFitter.FitMode.MinSize),
                 new DialogGUIHorizontalLayout(UnityEngine.TextAnchor.MiddleLeft,
                     new DialogGUILabel("#autoLOC_KWT200", false, true),   // "Save As: "
-                    new DialogGUITextInput("", filename, false, 60, value => filename = value, 300, 30)
+                    new DialogGUITextInput(filename, "#autoLOC_KWT211", false, 60, value => filename = value, 300, 30)  // "Enter filename"
                     ),
                 new DialogGUISpace(5),
                 new DialogGUIHorizontalLayout(UnityEngine.TextAnchor.MiddleLeft,
