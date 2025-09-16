@@ -65,8 +65,11 @@ namespace KerbalWindTunnel.AssetLoader
             if (textures.ContainsKey(identifier))
                 return;
             byte[] bytes;
-            path = PrepareFilename(path);
-            using (FileStream stream = File.Open(path, FileMode.Open, FileAccess.Read))
+            string localPath = path;
+            if (!Path.HasExtension(localPath))
+                localPath = Path.Combine(localPath, identifier);
+            localPath = PrepareFilename(localPath);
+            using (FileStream stream = File.Open(localPath, FileMode.Open, FileAccess.Read))
             {
                 bytes = new byte[stream.Length];
                 await stream.ReadAsync(bytes, 0, (int)stream.Length);
@@ -103,8 +106,11 @@ namespace KerbalWindTunnel.AssetLoader
             if (textures.ContainsKey(identifier))
                 return textures[identifier];
             Texture2D texture = new Texture2D(2, 2);
-            path = PrepareFilename(path);
-            texture.LoadImage(File.ReadAllBytes(path));
+            string localPath = path;
+            if (!Path.HasExtension(localPath))
+                localPath = Path.Combine(localPath, identifier);
+            localPath = PrepareFilename(localPath);
+            texture.LoadImage(File.ReadAllBytes(localPath));
             lock (textures)
             {
                 if (textures.ContainsKey(identifier))
@@ -133,6 +139,9 @@ namespace KerbalWindTunnel.AssetLoader
                 path.EndsWith(".jpeg", StringComparison.CurrentCultureIgnoreCase)))
                 throw new FileLoadException($"[KWT-Localizer] Path must end in a supported file format. \"{path}\"");
 
+            if (!Path.IsPathRooted(path))
+                path = KSPUtil.ApplicationRootPath + path;
+
             int extensionIndex = path.LastIndexOf(".");
 
             string language;
@@ -142,38 +151,61 @@ namespace KerbalWindTunnel.AssetLoader
             language = Localizer.CurrentLanguage;
 #endif
 
-            string localizedPath = path.Insert(extensionIndex, "_" + language);
-            if (File.Exists(localizedPath))
+            if (TryLoad(path, $"_{language}", extensionIndex, out string localizedPath))
                 return localizedPath;
+
+            // If using en-us, try without suffix
+            if (string.Equals(language, "en-us", StringComparison.InvariantCultureIgnoreCase))
+            {
+                if (TryLoad(path, "", 0, out localizedPath))
+                {
+#if DEBUG
+                    Debug.LogError($"[KWT-Localizer] The path {path} is not localized.");
+#endif
+                    return localizedPath;
+                }
+            }
+
             // Try uppercase
-            localizedPath = path.Insert(extensionIndex, "_" + language.ToUpper());
-            if (File.Exists(localizedPath))
+            if (TryLoad(path, $"_{language.ToUpper()}", extensionIndex, out localizedPath))
             {
                 Debug.LogWarning($"[KWT-Localizer] The path {path} in language {language} is in upper case when it shouldn't be.");
                 return localizedPath;
             }
 
-            Debug.LogError($"[KWT-Localizer] Could not find {path} in language {language}");
-
             // Try the default language
-            localizedPath = path.Insert(extensionIndex, "_" + "en-us");
-            if (File.Exists(localizedPath))
-                return localizedPath;
-
-            // Try the default language in uppercase
-            localizedPath = path.Insert(extensionIndex, "_" + "en-us".ToUpper());
-            if (File.Exists(localizedPath))
-                return localizedPath;
-
-            // Try just the filename
-            localizedPath = path;
-            if (File.Exists(localizedPath))
+            if (!string.Equals(language, "en-us", StringComparison.InvariantCultureIgnoreCase))
             {
-                Debug.LogError($"[KWT-Localizer] The path {path} is not localized.");
-                return localizedPath;
+                if (TryLoad(path, "_en-us", extensionIndex, out localizedPath))
+                {
+                    string preferredPath = path.Insert(extensionIndex, $"_{language}");
+                    Debug.LogError($"[KWT-Localizer] Could not find {path} in language {language}: {preferredPath}");
+                    return localizedPath;
+                }
+                if (TryLoad(path, "_EN-US", extensionIndex, out localizedPath))
+                {
+                    string preferredPath = path.Insert(extensionIndex, $"_{language}");
+                    Debug.LogError($"[KWT-Localizer] Could not find {path} in language {language}: {preferredPath}");
+                    return localizedPath;
+                }
+                
+                localizedPath = path.Insert(extensionIndex, "_en-us");
+
+                // Try just the filename
+                if (TryLoad(path, "", 0, out localizedPath))
+                {
+                    Debug.LogWarning($"[KWT-Localizer] The path {path} is not localized.");
+                    return localizedPath;
+                }
             }
 
             throw new FileNotFoundException($"[KWT-Localizer] Could not find {path}.");
+        }
+
+        private static bool TryLoad(string path, string localizedSuffix, int extensionIndex, out string localizedPath)
+        {
+            localizedPath = path.Insert(extensionIndex, localizedSuffix);
+            return File.Exists(localizedPath);
         }
     }
 }

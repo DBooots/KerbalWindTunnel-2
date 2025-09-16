@@ -49,13 +49,11 @@ namespace KerbalWindTunnel.AssetLoader
 #endif
             string path = KSPUtil.ApplicationRootPath + kspediaResourcesPath;
 
-            Debug.Log("[KWT] Processing KSPedia localizated image files.");
+            Debug.Log("[KWT] Processing KSPedia localized image files.");
             foreach (string file in System.IO.Directory.EnumerateFiles(path, "*.*", System.IO.SearchOption.AllDirectories))
             {
                 if (!System.IO.Path.HasExtension(file))
                     continue;
-
-                Debug.Log(file);
 
                 // only load those for the current language
                 int localizationStart = file.LastIndexOf("_");
@@ -68,6 +66,8 @@ namespace KerbalWindTunnel.AssetLoader
 
                 if (!string.Equals(file.Substring(localizationStart + 1, currentLanguage.Length), currentLanguage, System.StringComparison.CurrentCultureIgnoreCase))
                     continue;
+
+                Debug.Log(file);
 
                 // strip out the localization suffix
                 string file_ = file.Remove(localizationStart, currentLanguage.Length + 1);

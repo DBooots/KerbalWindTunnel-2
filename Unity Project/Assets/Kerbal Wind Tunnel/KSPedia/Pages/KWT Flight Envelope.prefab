@@ -88,7 +88,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   identifier: graph.png
-  path: 
+  path: GameData/WindTunnel/Textures/KSPedia Localization/
   spriteRect:
     serializedVersion: 2
     x: 0
@@ -268,7 +268,7 @@ PrefabInstance:
     - target: {fileID: 804798086673210747, guid: 3addb70a9570b5f4c81607b852a642b9,
         type: 3}
       propertyPath: m_SizeDelta.x
-      value: -818
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 804798086673210747, guid: 3addb70a9570b5f4c81607b852a642b9,
         type: 3}
@@ -540,12 +540,12 @@ PrefabInstance:
     - target: {fileID: 804798086673210747, guid: 3addb70a9570b5f4c81607b852a642b9,
         type: 3}
       propertyPath: m_SizeDelta.x
-      value: 1005
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 804798086673210747, guid: 3addb70a9570b5f4c81607b852a642b9,
         type: 3}
       propertyPath: m_SizeDelta.y
-      value: 163
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 804798086673210747, guid: 3addb70a9570b5f4c81607b852a642b9,
         type: 3}

@@ -38,7 +38,7 @@ namespace KerbalWindTunnel.AssetLoader
                 return;
             CreateSprite();
         }
-//#if UNITY_EDITOR
+#if UNITY_EDITOR
         private void OnValidate()
         {
             try
@@ -50,13 +50,12 @@ namespace KerbalWindTunnel.AssetLoader
 
             }
         }
-//#endif
+#endif
 
         private void CreateSprite()
         {
             string localPath = path;
 #if !OUTSIDE_UNITY
-            path = "";
             localPath = Application.dataPath + "/Kerbal Wind Tunnel/KSPedia/Textures/" + identifier;
 #endif
             DestroySprite();

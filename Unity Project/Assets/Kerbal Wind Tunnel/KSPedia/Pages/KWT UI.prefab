@@ -89,8 +89,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   identifier: highlight_main.png
-  path: D:/Users/david/Documents/Source Code/KerbalWindTunnel 2/Unity Project/Assets/Kerbal
-    Wind Tunnel/KSPedia/Textures/highlight_main.png
+  path: GameData/WindTunnel/Textures/KSPedia Localization/
   spriteRect:
     serializedVersion: 2
     x: 0

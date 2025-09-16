@@ -10907,7 +10907,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   identifier: export.png
-  path: 
+  path: GameData/WindTunnel/Textures/KSPedia Localization/
   spriteRect:
     serializedVersion: 2
     x: 0
