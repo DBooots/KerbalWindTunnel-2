@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace KerbalWindTunnel.VesselCache
@@ -48,6 +49,27 @@ namespace KerbalWindTunnel.VesselCache
                 DeltaDragCoefficientCurve_Pos = null;
                 DeltaDragCoefficientCurve_Neg = null;
             }
+        }
+
+        protected override float SurfDragForce_Parasite(float aoa)
+        {
+            if (!controlSurface.deployed)
+                return base.SurfDragForce_Parasite(aoa);
+
+            float surfaceInput = controlSurface.deployAngle * controlSurface.deploymentDirection;
+
+            Vector3 relLiftVector = Quaternion.AngleAxis(surfaceInput, controlSurface.rotationAxis) * controlSurface.liftVector;
+
+            Vector3 inflow = AeroPredictor.InflowVect(aoa);
+
+            float dot = Vector3.Dot(inflow, relLiftVector);
+            float absdot = controlSurface.omnidirectional ? Math.Abs(dot) : Mathf.Clamp01(dot);
+            Vector3 drag;
+            lock (controlSurface.dragCurve)
+                drag = -inflow * controlSurface.dragCurve.Evaluate(absdot) * controlSurface.deflectionLiftCoeff * PhysicsGlobals.LiftDragMultiplier;
+            drag *= 1000;
+
+            return AeroPredictor.GetDragForceComponent(drag, aoa);
         }
 
         private float PartDragForcePos(float mach, float aoa) => PartDragForce(mach, aoa, 1);

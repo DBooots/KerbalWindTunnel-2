@@ -144,20 +144,6 @@ namespace KerbalWindTunnel.VesselCache
                 CharacterizationExtensions.AndSortedSet(dragAoAKeys_Parasite);
 
                 // Parasite Drag
-                float SurfDragForce_Parasite(float aoa)
-                {
-                    Vector3 inflow = AeroPredictor.InflowVect(aoa);
-
-                    float dot = Vector3.Dot(inflow, simulatedLiftingSurface.liftVector);
-                    float absdot = simulatedLiftingSurface.omnidirectional ? Math.Abs(dot) : Mathf.Clamp01(dot);
-                    Vector3 drag;
-                    lock (simulatedLiftingSurface.dragCurve)
-                        drag = -inflow * simulatedLiftingSurface.dragCurve.Evaluate(absdot) * simulatedLiftingSurface.deflectionLiftCoeff * PhysicsGlobals.LiftDragMultiplier;
-                    drag *= 1000;
-
-                    return AeroPredictor.GetDragForceComponent(drag, aoa);
-                }
-
                 if (simulatedLiftingSurface.useInternalDragModel)
                     DragCoefficientCurve_Parasite = KSPClassExtensions.ComputeFloatCurve(dragAoAKeys_Parasite, SurfDragForce_Parasite, CharacterizedVessel.toleranceF);
                 else
@@ -191,6 +177,19 @@ namespace KerbalWindTunnel.VesselCache
                 DragCoefficientCurve_Induced = null;
                 DragCoefficientCurve_Parasite = null;
             }
+        }
+        protected virtual float SurfDragForce_Parasite(float aoa)
+        {
+            Vector3 inflow = AeroPredictor.InflowVect(aoa);
+
+            float dot = Vector3.Dot(inflow, simulatedLiftingSurface.liftVector);
+            float absdot = simulatedLiftingSurface.omnidirectional ? Math.Abs(dot) : Mathf.Clamp01(dot);
+            Vector3 drag;
+            lock (simulatedLiftingSurface.dragCurve)
+                drag = -inflow * simulatedLiftingSurface.dragCurve.Evaluate(absdot) * simulatedLiftingSurface.deflectionLiftCoeff * PhysicsGlobals.LiftDragMultiplier;
+            drag *= 1000;
+
+            return AeroPredictor.GetDragForceComponent(drag, aoa);
         }
 
         protected virtual void Null()
