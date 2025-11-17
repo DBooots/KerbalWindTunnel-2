@@ -41,7 +41,7 @@ namespace KerbalWindTunnel.VesselCache
         internal FloatCurve2 ctrlDeltaDragPos;
         internal FloatCurve2 ctrlDeltaDragNeg;
 
-        internal FloatCurve aoaMax;
+        public FloatCurve AoAMax { get; private set; }
 
         private readonly List<CharacterizedPart> parts = new List<CharacterizedPart>();
         private readonly List<CharacterizedLiftingSurface> surfaces = new List<CharacterizedLiftingSurface>();
@@ -236,7 +236,7 @@ namespace KerbalWindTunnel.VesselCache
                 return this.FindMaxAoA(conditions, out float lift, 30 * Mathf.Deg2Rad); // TODO: Use some heuristic based on the keys to have a good guess.
             }
 
-            aoaMax = KSPClassExtensions.ComputeFloatCurve(machKeys, GetAoAMax, machStep);
+            AoAMax = KSPClassExtensions.ComputeFloatCurve(machKeys, GetAoAMax, machStep);
         }
 
         public void Dispose()
@@ -453,7 +453,7 @@ namespace KerbalWindTunnel.VesselCache
         public float GetAoAMax(Conditions conditions)
         {
             WaitUntilAoACharacterized();
-            return aoaMax.EvaluateThreadSafe(conditions.mach);
+            return AoAMax.EvaluateThreadSafe(conditions.mach);
         }
 
         protected override System.Data.DataSet WriteToDataSet()
