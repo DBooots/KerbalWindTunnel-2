@@ -45,7 +45,7 @@ namespace KerbalWindTunnel.DataGenerators
             /*new SurfGraphDefinition("staticMargin", p => p.speed >= 40 ? p.staticMargin * 100 : float.NaN) { DisplayName = "#autoLOC_KWT336", ZUnit = "#autoLOC_KWT014", StringFormat = "F2" }, // "Static Margin" "% MAC"
             new SurfGraphDefinition("stabilityDerivative", p => p.dTorque) { DisplayName = "#autoLOC_KWT339", ZUnit = "#autoLOC_KWT009", StringFormat = "F2" },*/ // "Stability Derivative" "kNm/°"
             new SurfGraphDefinition("fuel_economy", p => p.speed >= 40 ? p.fuelBurnRate / p.speed * 100 * 1000 : float.NaN) { DisplayName = "#autoLOC_KWT340", ZUnit = "#autoLOC_KWT011", StringFormat = "F2" },    // "Fuel Economy" "kg/100 km"
-            new SurfGraphDefinition("fuel_rate", p => p.fuelBurnRate) { DisplayName = "#autoLOC_KWT341", ZUnit = "autoLOC_KWT012", StringFormat = "F3" },   // "Fuel Burn Rate" "kg/s"
+            new SurfGraphDefinition("fuel_rate", p => p.fuelBurnRate) { DisplayName = "#autoLOC_KWT341", ZUnit = "#autoLOC_KWT012", StringFormat = "F3" },   // "Fuel Burn Rate" "kg/s"
             new SurfGraphDefinition("accel_excess", p => p.Accel_Excess) { DisplayName = "#autoLOC_KWT330", ZUnit = "#autoLOC_KWT006", StringFormat = "N2", CMin = 0, Enabled = false } // "Excess Acceleration" "g"
         };
         //graphables.Add(new SurfGraph(blank, left, right, bottom, top) { Name = "Stability Range", ZUnit = "deg", StringFormat = "F2", ColorScheme = Graphing.Extensions.GradientExtensions.Jet_Dark });
