@@ -35,11 +35,11 @@ namespace KerbalWindTunnel.DataGenerators
             new SurfGraphDefinition("power_excess", p => p.Specific(p.Power_Excess)) { DisplayName = "#autoLOC_KWT335", ZUnit = "#autoLOC_KWT005", StringFormat = "N0", CMin = 0 }, // "Specific Excess Power" "m/s"
             new SurfGraphDefinition("climbAngle", p => Mathf.Asin(Mathf.Clamp(p.Thrust_Excess * p.invMass * WindTunnelWindow.invGAccel, -1, 1)) * Mathf.Rad2Deg)
                 { DisplayName = "#autoLOC_KWT343", ZUnit = "#autoLOC_KWT000", StringFormat = "F2" },    // "Max Climb Angle" "°"
-            new SurfGraphDefinition("aoa_level", p => p.AoA_level * Mathf.Deg2Rad) { DisplayName = "#autoLOC_KWT326", ZUnit = "#autoLOC_KWT000", StringFormat = "F2" }, // "Level Flight AoA" "°"
+            new SurfGraphDefinition("aoa_level", p => p.AoA_level * Mathf.Rad2Deg) { DisplayName = "#autoLOC_KWT326", ZUnit = "#autoLOC_KWT000", StringFormat = "F2" }, // "Level Flight AoA" "°"
             new SurfGraphDefinition("ldRatio", p => p.LDRatio) { DisplayName = "#autoLOC_KWT313", ZUnit = "#autoLOC_KWT015", StringFormat = "F2" },   // "Lift/Drag Ratio" "-"
             new SurfGraphDefinition("lift_slope_coefSwap", null) { DisplayName = "#autoLOC_KWT314", StringFormat = "F3" },  // "Lift Slope"
             new SurfGraphDefinition("drag_coefSwap", null) { DisplayName = "#autoLOC_KWT311" }, // "Drag"
-            new SurfGraphDefinition("aoa_max", p => p.AoA_max * Mathf.Deg2Rad) { DisplayName = "#autoLOC_KWT327", ZUnit = "#autoLOC_KWT000", StringFormat = "F2" }, // "Max Lift AoA" "°"
+            new SurfGraphDefinition("aoa_max", p => p.AoA_max * Mathf.Rad2Deg) { DisplayName = "#autoLOC_KWT327", ZUnit = "#autoLOC_KWT000", StringFormat = "F2" }, // "Max Lift AoA" "°"
             new SurfGraphDefinition("liftMax_coefSwap", null) { DisplayName = "#autoLOC_KWT309" },  // "Max Lift"
             new SurfGraphDefinition("pitch_input", p => p.pitchInput * 100) { DisplayName = "#autoLOC_KWT315", ZUnit = "#autoLOC_KWT003", StringFormat = "N0" },    // "Pitch Input" "%"
             /*new SurfGraphDefinition("staticMargin", p => p.speed >= 40 ? p.staticMargin * 100 : float.NaN) { DisplayName = "#autoLOC_KWT336", ZUnit = "#autoLOC_KWT014", StringFormat = "F2" }, // "Static Margin" "% MAC"
