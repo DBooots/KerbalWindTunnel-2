@@ -67,6 +67,27 @@ namespace KerbalWindTunnel.DataGenerators
             }
         }
 
+        public void SetMachMode(bool speedIsMach)
+        {
+            string xName, xUnit;
+            if (speedIsMach)
+            {
+                xName = EnvelopeSurf.xMachName;
+                xUnit = EnvelopeSurf.xMachUnit;
+            }
+            else
+            {
+                xName = EnvelopeSurf.xName;
+                xUnit = EnvelopeSurf.xUnit;
+            }
+
+            foreach (GraphDefinition graphDefinition in graphDefinitions)
+            {
+                graphDefinition.XName = xName;
+                graphDefinition.XUnit = xUnit;
+            }
+        }
+
         public VelCurve()
         {
             SetCoefficientMode(WindTunnelSettings.UseCoefficients);

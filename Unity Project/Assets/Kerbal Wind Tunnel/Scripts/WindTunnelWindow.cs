@@ -972,6 +972,7 @@ namespace KerbalWindTunnel
             aoaData.SetCoefficientMode(WindTunnelSettings.UseCoefficients);
 
             envelopeData.SetMachMode(WindTunnelSettings.SpeedIsMach);
+            velData.SetMachMode(WindTunnelSettings.SpeedIsMach);
 
             if (WindTunnelSettings.SpeedIsMach)
                 highlightSpeedInput.Text = (HighlightSpeed / GetSpeedOfSound(HighlightAltitude)).ToString("F2");
