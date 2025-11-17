@@ -7,10 +7,10 @@ namespace KerbalWindTunnel.VesselCache
 {
     public static class AeroOptimizer
     {
-        const float defaultAoATolerance = 0.05f * Mathf.Deg2Rad;
-        const float defaultAoAOptTolerance = 0.1f * Mathf.Deg2Rad;
-        const float defaultInputTolerance = 0.01f;
-        const float levelGuessRange = 5 * Mathf.Deg2Rad;
+        public const float defaultAoATolerance = 0.05f * Mathf.Deg2Rad;
+        public const float defaultAoAOptTolerance = 1E-5f;
+        public const float defaultInputTolerance = 0.01f;
+        public const float levelGuessRange = 5 * Mathf.Deg2Rad;
 
         private static readonly int[] levelFlightStepdownValues = new int[] { -5, -10, -20, -40, -90 };
 
