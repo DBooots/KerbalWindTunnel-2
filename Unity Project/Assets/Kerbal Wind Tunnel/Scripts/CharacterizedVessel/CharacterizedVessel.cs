@@ -220,7 +220,7 @@ namespace KerbalWindTunnel.VesselCache
             // This lets us precompute the max AoA for a given Mach.
             // This should even be a FloatCurve since the liftMachCurves that shift the weighting between parts and surfaces
             // is itself a FloatCurve.
-            const float machStep = 0.002f;
+            const float machStep = 0.1f;
 
             SortedSet<float> machKeys = new SortedSet<float>();
             foreach (var (liftMachCurve, _) in surfaceLift)

@@ -261,7 +261,7 @@ namespace KerbalWindTunnel.VesselCache
             // Except, it turns out that mach number isn't calculated per-part, but is a vessel-wide number.
             //if (partCollection.partCollections.Count > 0)
                 //return;
-            const float machStep = 0.002f;
+            const float machStep = 0.1f;
             DirectAoAInitialized = false;
 #if ENABLE_PROFILER
             UnityEngine.Profiling.Profiler.BeginSample("SimulatedVessel.InitMaxAoA");
