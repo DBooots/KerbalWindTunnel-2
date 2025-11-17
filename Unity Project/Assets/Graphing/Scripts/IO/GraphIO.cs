@@ -202,7 +202,7 @@ namespace Graphing.IO
             UnityEngine.Object.Destroy(texture);
         }
 
-        public static string ValidateFilePath(string directory, string filename, FileFormat format)
+        public static string ValidateFilePath(string directory, string filename, string format)
         {
             if (string.IsNullOrEmpty(directory))
                 throw new ArgumentNullException(nameof(directory));
@@ -212,6 +212,24 @@ namespace Graphing.IO
                 throw new System.IO.DirectoryNotFoundException(directory);
             int extensionIndex = filename.LastIndexOf('.');
             string extension;
+            if (extensionIndex == -1)
+                extension = format;
+            else
+            {
+                extension = filename.Substring(extensionIndex);
+                if (!string.Equals(extension, format, StringComparison.OrdinalIgnoreCase))
+                    extension = format;
+                else
+                    filename = filename.Substring(0, extensionIndex);
+            }
+            filename = StripInvalidFileChars(filename);
+            if (string.IsNullOrEmpty(filename))
+                throw new ArgumentException("The resulting filename is empty", nameof(filename));
+            filename = string.Concat(filename, extension);
+            return string.Join($"{System.IO.Path.DirectorySeparatorChar}", directory, filename);
+        }
+        public static string ValidateFilePath(string directory, string filename, FileFormat format)
+        {
             string formatExtension;
             switch (format)
             {
@@ -235,20 +253,7 @@ namespace Graphing.IO
                 default:
                     throw new NotImplementedException("File format extension is missing");
             }
-            if (extensionIndex == -1)
-                extension = formatExtension;
-            else
-            {
-                extension = filename.Substring(extensionIndex);
-                filename = filename.Substring(0, extensionIndex);
-                if (!string.Equals(extension, formatExtension, StringComparison.OrdinalIgnoreCase))
-                    extension = formatExtension;
-            }
-            filename = StripInvalidFileChars(filename);
-            if (string.IsNullOrEmpty(filename))
-                throw new ArgumentException("The resulting filename is empty", nameof(filename));
-            filename = string.Concat(filename, extension);
-            return string.Join($"{System.IO.Path.DirectorySeparatorChar}", directory, filename);
+            return ValidateFilePath(directory, filename, formatExtension);
         }
 
         public static bool PathCharsAreValid(string directory)
