@@ -21,8 +21,9 @@ namespace KerbalWindTunnel.DataGenerators
 
         public static (int x, int y)[] resolution = { (10, 10), (40, 90), (80, 180), (160, 180) };
 
-        private const string xName = "#autoLOC_KWT323", xUnit = "#autoLOC_KWT005", yName = "#autoLOC_KWT322", yUnit = "#autoLOC_KWT001";    // "Speed" "m/s" "Altitude" "m"
-        private const string xMachName = "#autoLOC_KWT334", xMachUnit = "-";    // "Sea Level Mach"
+        internal const string xName = "#autoLOC_KWT323", xUnit = "#autoLOC_KWT005"; // "Speed" "m/s"
+        internal const string xMachName = "#autoLOC_KWT334", xMachUnit = "-";       // "Sea Level Mach"
+        private const string yName = "#autoLOC_KWT322", yUnit = "#autoLOC_KWT001";  // "Altitude" "m"
         private static Func<EnvelopeLine.AscentPathPoint, Vector2> ToVector =>
             (pt) => new Vector2(
                 WindTunnelSettings.SpeedIsMach ? pt.speed / WindTunnelWindow.GetSpeedOfSound(0) : pt.speed,
