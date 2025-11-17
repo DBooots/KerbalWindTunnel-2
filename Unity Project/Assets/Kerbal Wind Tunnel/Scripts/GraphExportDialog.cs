@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using Graphing;
 using Graphing.IO;
 
@@ -16,8 +18,29 @@ namespace KerbalWindTunnel
         }
 
         private string filename;
-        public static GraphIO.FileFormat format = GraphIO.FileFormat.XLSX;
+        public static GraphIO.FileFormat Format
+        {
+            get => format;
+            set
+            {
+                if (value != GraphIO.FileFormat.Image)
+                    lastNonJSONFormat = value;
+                format = value;
+            }
+        }
+        private static GraphIO.FileFormat format = GraphIO.FileFormat.XLSX;
+        private static GraphIO.FileFormat lastNonJSONFormat = GraphIO.FileFormat.XLSX;
         private GraphableCollection collection;
+        private OutputMode Mode
+        {
+            get => outputMode;
+            set
+            {
+                if (value != OutputMode.Vessel)
+                    Format = lastNonJSONFormat;
+                outputMode = value;
+            }
+        }
         private OutputMode outputMode;
         public readonly PopupDialog dialog;
 
@@ -25,7 +48,24 @@ namespace KerbalWindTunnel
         {
             filename = EditorLogic.fetch.ship.shipName;
             this.collection = collection;
-            outputMode = WindTunnelWindow.Instance.GraphMode == 0 ? OutputMode.Visible : OutputMode.All;
+            Mode = WindTunnelWindow.Instance.GraphMode == 0 ? OutputMode.Visible : OutputMode.All;
+            DialogGUIToggleGroup formatGroup = new DialogGUIToggleGroup(
+                new DialogGUIToggle(() => Format == GraphIO.FileFormat.XLSX, "#autoLOC_KWT202", _ => Format = GraphIO.FileFormat.XLSX), // "Spreadsheet"
+                new DialogGUIToggle(() => Format == GraphIO.FileFormat.CSV, "#autoLOC_KWT203", _ => Format = GraphIO.FileFormat.CSV)    // "CSV"
+                );
+            DialogGUIHorizontalLayout formatLayout = new DialogGUIHorizontalLayout(UnityEngine.TextAnchor.MiddleLeft,
+                new DialogGUILabel("#autoLOC_KWT201", false, true),    // "Format: "
+                formatGroup
+                );
+            if (AppDomain.CurrentDomain.GetAssemblies().Any(a => a.FullName.StartsWith("kOS,")))
+                formatGroup.AddChild(
+                    new DialogGUIToggle(() => Format == GraphIO.FileFormat.Image, "#autoLOC_KWT212", _ => Format = GraphIO.FileFormat.Image)    // "JSON for kOS"  Using Image as a stand-in, since no format entry can be exactly this value.
+                    {
+                        OptionInteractableCondition = () => Mode == OutputMode.Vessel && WindTunnelWindow.Instance.Vessel is VesselCache.CharacterizedVessel
+                    });
+            else
+                formatLayout.AddChild(new DialogGUIFlexibleSpace());
+
             List<DialogGUIBase> dialogItems = new List<DialogGUIBase>()
             {
                 new DialogGUIContentSizer(UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize, UnityEngine.UI.ContentSizeFitter.FitMode.MinSize),
@@ -34,19 +74,12 @@ namespace KerbalWindTunnel
                     new DialogGUITextInput(filename, "#autoLOC_KWT211", false, 60, value => filename = value, 300, 30)  // "Enter filename"
                     ),
                 new DialogGUISpace(5),
-                new DialogGUIHorizontalLayout(UnityEngine.TextAnchor.MiddleLeft,
-                    new DialogGUILabel("#autoLOC_KWT201", false, true),    // "Format: "
-                    new DialogGUIToggleGroup(
-                        new DialogGUIToggle(() => format == GraphIO.FileFormat.XLSX, "#autoLOC_KWT202", _ => format = GraphIO.FileFormat.XLSX), // "Spreadsheet"
-                        new DialogGUIToggle(() => format == GraphIO.FileFormat.CSV, "#autoLOC_KWT203", _ => format = GraphIO.FileFormat.CSV)    // "CSV"
-                        ),
-                    new DialogGUIFlexibleSpace()
-                    ),
+                formatLayout,
                 new DialogGUIHorizontalLayout(UnityEngine.TextAnchor.MiddleLeft,
                     new DialogGUIToggleGroup(
-                        new DialogGUIToggleButton(() => outputMode == OutputMode.Visible, "#autoLOC_KWT204", _ => outputMode = OutputMode.Visible, h: 25),  // "Visible graph(s)"
-                        new DialogGUIToggleButton(() => outputMode == OutputMode.All, "#autoLOC_KWT205", _ => outputMode = OutputMode.All, h: 25),  // "All graphs"
-                        new DialogGUIToggleButton(() => outputMode == OutputMode.Vessel, "#autoLOC_KWT206", _ => outputMode = OutputMode.Vessel, h: 25) // "Vessel"
+                        new DialogGUIToggleButton(() => Mode == OutputMode.Visible, "#autoLOC_KWT204", _ => Mode = OutputMode.Visible, h: 25),  // "Visible graph(s)"
+                        new DialogGUIToggleButton(() => Mode == OutputMode.All, "#autoLOC_KWT205", _ => Mode = OutputMode.All, h: 25),  // "All graphs"
+                        new DialogGUIToggleButton(() => Mode == OutputMode.Vessel, "#autoLOC_KWT206", _ => Mode = OutputMode.Vessel, h: 25) // "Vessel"
                         )
                 ),
                 new DialogGUIHorizontalLayout(
@@ -70,7 +103,11 @@ namespace KerbalWindTunnel
 
         private void Export()
         {
-            string path = GraphIO.ValidateFilePath(WindTunnel.graphPath, filename, format);
+            string path;
+            if (Format != GraphIO.FileFormat.Image) // Again, using Image as a stand-in for JSON.
+                path = GraphIO.ValidateFilePath(WindTunnel.graphPath, filename, Format);
+            else
+                path = GraphIO.ValidateFilePath(WindTunnel.graphPath, filename, ".json");
             if (System.IO.File.Exists(path))
             {
                 PopupDialog.SpawnPopupDialog(new UnityEngine.Vector2(0.5f, 0.5f), new UnityEngine.Vector2(0.5f, 0.5f),
@@ -94,12 +131,23 @@ namespace KerbalWindTunnel
         }
         private void ContinueExport(string filename)
         {
-            if (outputMode <= OutputMode.All)
-                // Acceptable to not await an Async method since this is the main thread calling an IO operation.
-                // Discard is used suppress the warning.
-                System.Threading.Tasks.Task.Run(() => collection.WriteToFile(WindTunnel.graphPath, filename, outputMode == OutputMode.Visible, format));
+            if (Mode <= OutputMode.All)
+                System.Threading.Tasks.Task.Run(() => collection.WriteToFile(WindTunnel.graphPath, filename, Mode == OutputMode.Visible, Format));
             else
-                WindTunnelWindow.Instance.Vessel.WriteToFile(WindTunnel.graphPath, filename, format);
+            {
+                if (Format == GraphIO.FileFormat.Image)
+                {
+                    if (WindTunnelWindow.Instance.Vessel is VesselCache.CharacterizedVessel characterizedVessel)
+                    {
+                        VesselCache.KosJsonWriter jsonWriter = new VesselCache.KosJsonWriter();
+                        jsonWriter.WriteToJson(characterizedVessel, filename);
+                    }
+                    else
+                        throw new System.InvalidOperationException("Cannot export a non-characterized vessel to JSON.");
+                }
+                else
+                    WindTunnelWindow.Instance.Vessel.WriteToFile(WindTunnel.graphPath, filename, Format);
+            }
         }
     }
 }

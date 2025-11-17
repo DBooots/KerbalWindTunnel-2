@@ -70,6 +70,7 @@
     <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\CharacterizedVessel\CharacterizedControlSurface.cs" />
     <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\CharacterizedVessel\CharacterizedLiftingSurface.cs" />
     <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\CharacterizedVessel\CharacterizedPart.cs" />
+    <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\CharacterizedVessel\KosJsonWriter.cs" />
     <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\DataGenerators\AoACurve.cs" />
     <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\DataGenerators\EnvelopeLine.cs" />
     <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\DataGenerators\EnvelopePoint.cs" />
