@@ -187,12 +187,18 @@ namespace KerbalWindTunnel.VesselCache
             }
         }
 
+        private static bool FloatCurveIsValid(FloatCurve curve)
+        {
+            if (curve == null) return false;
+            if (curve.IsAlwaysZero()) return false;
+            return true;
+        }
         private void CombineParts(Task _)
         {
             // Offloading one set of superposition work.
             Task<FloatCurve2> dragSuperposition = Task.Run(() => FloatCurve2.Superposition(parts.Select(p => p.DragCoefficientCurve)));
 
-            foreach (var bodyGroup in parts.Where(p => p.LiftMachScalarCurve != null).GroupBy(p => p.LiftMachScalarCurve, FloatCurveComparer.Instance))
+            foreach (var bodyGroup in parts.Where(p => FloatCurveIsValid(p.LiftMachScalarCurve) && FloatCurveIsValid(p.LiftCoefficientCurve)).GroupBy(p => p.LiftMachScalarCurve, FloatCurveComparer.Instance))
                 bodyLift.Add((bodyGroup.Key.Clone(), KSPClassExtensions.Superposition(bodyGroup.Select(s => s.LiftCoefficientCurve))));
 
             bodyDrag = dragSuperposition.Result;
@@ -203,11 +209,11 @@ namespace KerbalWindTunnel.VesselCache
             Task<FloatCurve2> negSuperposition = Task.Run(() => FloatCurve2.Superposition(controls.Select(c => c.DeltaDragCoefficientCurve_Neg)));
 
             IEnumerable <CharacterizedLiftingSurface> allSurfaces = surfaces.Concat(controls);
-            foreach (var surfGroup in allSurfaces.Where(s => s.LiftMachScalarCurve != null).GroupBy(s => s.LiftMachScalarCurve, FloatCurveComparer.Instance))
+            foreach (var surfGroup in allSurfaces.Where(s => FloatCurveIsValid(s.LiftMachScalarCurve) && FloatCurveIsValid(s.LiftCoefficientCurve)).GroupBy(s => s.LiftMachScalarCurve, FloatCurveComparer.Instance))
                 surfaceLift.Add((surfGroup.Key.Clone(), KSPClassExtensions.Superposition(surfGroup.Select(s => s.LiftCoefficientCurve))));
-            foreach (var surfGroup in allSurfaces.Where(s => s.LiftMachScalarCurve != null).GroupBy(s => s.LiftMachScalarCurve, FloatCurveComparer.Instance))
+            foreach (var surfGroup in allSurfaces.Where(s => FloatCurveIsValid(s.LiftMachScalarCurve) && FloatCurveIsValid(s.DragCoefficientCurve_Induced)).GroupBy(s => s.LiftMachScalarCurve, FloatCurveComparer.Instance))
                 surfaceDragI.Add((surfGroup.Key.Clone(), KSPClassExtensions.Superposition(surfGroup.Select(s => s.DragCoefficientCurve_Induced))));
-            foreach (var surfGroup in allSurfaces.Where(s => s.DragMachScalarCurve != null).GroupBy(s => s.DragMachScalarCurve, FloatCurveComparer.Instance))
+            foreach (var surfGroup in allSurfaces.Where(s => FloatCurveIsValid(s.DragMachScalarCurve) && FloatCurveIsValid(s.DragCoefficientCurve_Parasite)).GroupBy(s => s.DragMachScalarCurve, FloatCurveComparer.Instance))
                 surfaceDragP.Add((surfGroup.Key.Clone(), KSPClassExtensions.Superposition(surfGroup.Select(s => s.DragCoefficientCurve_Parasite))));
 
             ctrlDeltaDragPos = posSuperposition.Result;
