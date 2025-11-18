@@ -486,8 +486,15 @@ namespace KerbalWindTunnel.VesselCache
                     ds.Tables.Add(curveTable);
                     curveTable = forceCurve.WriteToDataTable();
                     curveTable.TableName = string.Join("_", localName, Localizer.Format("#autoLOC_KWT305"));    // "Coef"
+                    // Convert angles to degrees
+                    // TODO: Harmonize this with the drag curves (which are in radians)
+                    // TODO: Add a setting for degrees or radians
                     foreach (System.Data.DataRow row in curveTable.Rows)
+                    {
                         row[0] = (float)row[0] * Mathf.Rad2Deg;
+                        row[2] = (float)row[2] * Mathf.Deg2Rad; // this is 1/Mathf.Rad2Deg
+                        row[3] = (float)row[3] * Mathf.Deg2Rad; // Slopes get scaled by the inverse
+                    }
                     curveTable.Columns[0].ColumnName = Graphing.Graphable.FormatNameAndUnit(Localizer.Format("#autoLOC_KWT302"), Localizer.Format("#autoLOC_KWT000"));  // "Angle of Attack" "°"
                     ds.Tables.Add(curveTable);
                 }
