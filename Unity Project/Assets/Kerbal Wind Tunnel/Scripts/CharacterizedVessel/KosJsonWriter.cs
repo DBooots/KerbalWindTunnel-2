@@ -271,7 +271,7 @@ namespace KerbalWindTunnel.VesselCache
                 }
                 return (float)Accord.Math.Optimization.BrentSearch.Maximize(CalculateLD, -5 * Mathf.Deg2Rad, vessel.AoAMax.Evaluate(mach), AeroOptimizer.defaultAoAOptTolerance);
             }
-            return KSPClassExtensions.ComputeFloatCurve(machKeys, FindMaxLDAoAForMach, 0.15f);
+            return FloatCurveExtensions.ComputeFloatCurve(machKeys, FindMaxLDAoAForMach, 0.15f);
         }
     }
 }

@@ -111,7 +111,7 @@ namespace KerbalWindTunnel.VesselCache
                     return AeroPredictor.GetLiftForceComponent(lift, aoa);
                 }
 
-                LiftCoefficientCurve = KSPClassExtensions.ComputeFloatCurve(liftAoAKeys, SurfLiftForce, CharacterizedVessel.toleranceF);
+                LiftCoefficientCurve = FloatCurveExtensions.ComputeFloatCurve(liftAoAKeys, SurfLiftForce, CharacterizedVessel.toleranceF);
             }
             else
                 LiftCoefficientCurve = null;
@@ -145,7 +145,7 @@ namespace KerbalWindTunnel.VesselCache
 
                 // Parasite Drag
                 if (simulatedLiftingSurface.useInternalDragModel)
-                    DragCoefficientCurve_Parasite = KSPClassExtensions.ComputeFloatCurve(dragAoAKeys_Parasite, SurfDragForce_Parasite, CharacterizedVessel.toleranceF);
+                    DragCoefficientCurve_Parasite = FloatCurveExtensions.ComputeFloatCurve(dragAoAKeys_Parasite, SurfDragForce_Parasite, CharacterizedVessel.toleranceF);
                 else
                     DragCoefficientCurve_Parasite = null;
 
@@ -168,7 +168,7 @@ namespace KerbalWindTunnel.VesselCache
                 }
 
                 if (!simulatedLiftingSurface.perpendicularOnly)
-                    DragCoefficientCurve_Induced = KSPClassExtensions.ComputeFloatCurve(dragAoAKeys_Induced, SurfDragForce_Induced, CharacterizedVessel.toleranceF);
+                    DragCoefficientCurve_Induced = FloatCurveExtensions.ComputeFloatCurve(dragAoAKeys_Induced, SurfDragForce_Induced, CharacterizedVessel.toleranceF);
                 else
                     DragCoefficientCurve_Induced = null;
             }

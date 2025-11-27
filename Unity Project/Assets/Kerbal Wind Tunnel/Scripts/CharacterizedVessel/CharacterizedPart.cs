@@ -96,7 +96,7 @@ namespace KerbalWindTunnel.VesselCache
                         return AeroPredictor.GetLiftForceComponent(lift, aoa) / machMag;
                     }
 
-                    LiftCoefficientCurve = KSPClassExtensions.ComputeFloatCurve(partAoAKeys, PartLiftForce, CharacterizedVessel.toleranceF);
+                    LiftCoefficientCurve = FloatCurveExtensions.ComputeFloatCurve(partAoAKeys, PartLiftForce, CharacterizedVessel.toleranceF);
                 }
                 else
                     LiftCoefficientCurve = null;

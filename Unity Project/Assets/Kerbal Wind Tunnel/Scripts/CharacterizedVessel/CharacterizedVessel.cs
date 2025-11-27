@@ -199,13 +199,13 @@ namespace KerbalWindTunnel.VesselCache
             Task<FloatCurve2> dragSuperposition = Task.Run(() => FloatCurve2.Superposition(parts.Select(p => p.DragCoefficientCurve)));
 
             foreach (var bodyGroup in parts.Where(p => FloatCurveIsValid(p.LiftMachScalarCurve) && FloatCurveIsValid(p.LiftCoefficientCurve)).GroupBy(p => p.LiftMachScalarCurve, FloatCurveComparer.Instance))
-                bodyLift.Add((bodyGroup.Key.Clone(), KSPClassExtensions.Superposition(bodyGroup.Select(s => s.LiftCoefficientCurve))));
+                bodyLift.Add((bodyGroup.Key.Clone(), FloatCurveExtensions.Superposition(bodyGroup.Select(s => s.LiftCoefficientCurve))));
 
             foreach (var (_, liftCurve) in bodyLift)
                 liftCurve.Simplify();
 
             bodyDrag = dragSuperposition.Result;
-            bodyDrag = FloatCurve2.Simplify(bodyDrag, 1);
+            bodyDrag = bodyDrag.Simplify(1);
         }
         private void CombineSurfaces(Task _)
         {
@@ -214,11 +214,11 @@ namespace KerbalWindTunnel.VesselCache
 
             IEnumerable <CharacterizedLiftingSurface> allSurfaces = surfaces.Concat(controls);
             foreach (var surfGroup in allSurfaces.Where(s => FloatCurveIsValid(s.LiftMachScalarCurve) && FloatCurveIsValid(s.LiftCoefficientCurve)).GroupBy(s => s.LiftMachScalarCurve, FloatCurveComparer.Instance))
-                surfaceLift.Add((surfGroup.Key.Clone(), KSPClassExtensions.Superposition(surfGroup.Select(s => s.LiftCoefficientCurve))));
+                surfaceLift.Add((surfGroup.Key.Clone(), FloatCurveExtensions.Superposition(surfGroup.Select(s => s.LiftCoefficientCurve))));
             foreach (var surfGroup in allSurfaces.Where(s => FloatCurveIsValid(s.LiftMachScalarCurve) && FloatCurveIsValid(s.DragCoefficientCurve_Induced)).GroupBy(s => s.LiftMachScalarCurve, FloatCurveComparer.Instance))
-                surfaceDragI.Add((surfGroup.Key.Clone(), KSPClassExtensions.Superposition(surfGroup.Select(s => s.DragCoefficientCurve_Induced))));
+                surfaceDragI.Add((surfGroup.Key.Clone(), FloatCurveExtensions.Superposition(surfGroup.Select(s => s.DragCoefficientCurve_Induced))));
             foreach (var surfGroup in allSurfaces.Where(s => FloatCurveIsValid(s.DragMachScalarCurve) && FloatCurveIsValid(s.DragCoefficientCurve_Parasite)).GroupBy(s => s.DragMachScalarCurve, FloatCurveComparer.Instance))
-                surfaceDragP.Add((surfGroup.Key.Clone(), KSPClassExtensions.Superposition(surfGroup.Select(s => s.DragCoefficientCurve_Parasite))));
+                surfaceDragP.Add((surfGroup.Key.Clone(), FloatCurveExtensions.Superposition(surfGroup.Select(s => s.DragCoefficientCurve_Parasite))));
 
             foreach (var (_, liftCurve) in surfaceLift)
                 liftCurve.Simplify();
@@ -253,7 +253,7 @@ namespace KerbalWindTunnel.VesselCache
                 return this.FindMaxAoA(conditions, out float lift, 30 * Mathf.Deg2Rad); // TODO: Use some heuristic based on the keys to have a good guess.
             }
 
-            AoAMax = KSPClassExtensions.ComputeFloatCurve(machKeys, GetAoAMax, machStep);
+            AoAMax = FloatCurveExtensions.ComputeFloatCurve(machKeys, GetAoAMax, machStep);
         }
 
         public void Dispose()

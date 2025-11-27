@@ -80,6 +80,8 @@
     <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\DataGenerators\TaskProgressTracker.cs" />
     <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\Extensions\DelegateFactory.cs" />
     <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\Extensions\FloatCurve2.cs" />
+    <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\Extensions\FloatCurve2Extensions.cs" />
+    <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\Extensions\FloatCurveExtensions.cs" />
     <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\Extensions\InputLockSelectHandler.cs" />
     <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\Extensions\KSPClassExtensions.cs" />
     <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\Extensions\Linq2.cs" />
