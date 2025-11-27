@@ -135,7 +135,19 @@ namespace KerbalWindTunnel.Extensions
             throw new InvalidOperationException("No element satisfies the condition in Predicate.");
         }
 
-        public static T[] To1Dmension<T>(this T[,] vals)
+        public static IEnumerable<T> To1Dimension<T>(this T[,] vals)
+        {
+            if (vals == null)
+                throw new ArgumentNullException();
+            int length = vals.Length;
+            int columns = vals.GetUpperBound(1) + 1;
+
+            for (int i = length - 1; i >= 0; i--)
+            {
+                yield return vals[i % columns, i / columns];
+            }
+        }
+        public static T[] To1DmensionArray<T>(this T[,] vals)
         {
             if (vals == null)
                 throw new ArgumentNullException();

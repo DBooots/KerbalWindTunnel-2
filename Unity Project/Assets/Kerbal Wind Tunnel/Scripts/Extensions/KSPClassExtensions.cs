@@ -93,13 +93,19 @@ namespace KerbalWindTunnel.Extensions
                 return (keyframe0.inTangent + keyframe0.outTangent) / 2;
 
             Keyframe keyframe1 = curve.Curve.keys[k0Index + 1];
-            float dt = keyframe1.time - keyframe0.time;
+            return EvaluateFloatCurveDerivativeKeyframe(time, keyframe0, keyframe1);
+        }
+        private static float EvaluateFloatCurveDerivativeKeyframe(float time, Keyframe keyframe0, Keyframe keyframe1)
+            => EvaluateBicubicDerivative(time, keyframe0.time, keyframe1.time, keyframe0.value, keyframe0.outTangent, keyframe1.inTangent, keyframe1.value);
+        public static float EvaluateBicubicDerivative(float time, float t0, float t1, float value0, float outTangent, float inTangent, float value1)
+        {
+            float dt = t1 - t0;
 
             float invDt = 1 / dt;
-            float t = (time - keyframe0.time) * invDt;
+            float t = (time - t0) * invDt;
 
-            float m0 = keyframe0.outTangent;
-            float m1 = keyframe1.inTangent;
+            float m0 = outTangent;
+            float m1 = inTangent;
 
             float t2 = t * t;
 
@@ -108,10 +114,10 @@ namespace KerbalWindTunnel.Extensions
             float c = 3 * t2 - 2 * t;
             float d = -6 * t2 + 6 * t;
 
-            return b * m0 + c * m1 + (a * keyframe0.value + d * keyframe1.value) * invDt;
+            return b * m0 + c * m1 + (a * value0 + d * value1) * invDt;
         }
 
-        static int FindIndex(Keyframe[] keys, float value, out bool exact)
+        private static int FindIndex(Keyframe[] keys, float value, out bool exact)
         {
             Keyframe valueKey = new Keyframe(value, 0);
             int result = Array.BinarySearch(keys, valueKey, keyframeTimeComparer);
@@ -124,7 +130,7 @@ namespace KerbalWindTunnel.Extensions
             return (~result) - 1;
         }
 
-        public static Comparer<Keyframe> keyframeTimeComparer = Comparer<Keyframe>.Create((k1, k2) => k1.time.CompareTo(k2.time));
+        public static readonly Comparer<Keyframe> keyframeTimeComparer = Comparer<Keyframe>.Create((k1, k2) => k1.time.CompareTo(k2.time));
 
         public static bool IsAlwaysZero(this FloatCurve curve)
         {
@@ -146,12 +152,17 @@ namespace KerbalWindTunnel.Extensions
             int index0 = FindIndex(curve.Curve.keys, time, out _);
             Keyframe keyframe0 = curve.Curve.keys[index0];
             Keyframe keyframe1 = curve.Curve.keys[index0 + 1];
+            return EvaluateFloatCurveKeyframe(time, keyframe0, keyframe1);
+        }
+        private static float EvaluateFloatCurveKeyframe(float time, Keyframe keyframe0, Keyframe keyframe1)
+            => EvaluateBicubic(time, keyframe0.time, keyframe1.time, keyframe0.value, keyframe0.outTangent, keyframe1.inTangent, keyframe1.value);
+        public static float EvaluateBicubic(float time, float t0, float t1, float value0, float outTangent, float inTangent, float value1)
+        {
+            float dt = t0 - t1;
+            float t = (time - t1) / dt;
 
-            float dt = keyframe1.time - keyframe0.time;
-            float t = (time - keyframe0.time) / dt;
-
-            float m0 = keyframe0.outTangent * dt;
-            float m1 = keyframe1.inTangent * dt;
+            float m0 = outTangent * dt;
+            float m1 = inTangent * dt;
 
             float t2 = t * t;
             float t3 = t2 * t;
@@ -161,7 +172,7 @@ namespace KerbalWindTunnel.Extensions
             float c = t3 - t2;
             float d = -2 * t3 + 3 * t2;
 
-            return a * keyframe0.value + b * m0 + c * m1 + d * keyframe1.value;
+            return a * value0 + b * m0 + c * m1 + d * value1;
         }
         public static FloatCurve Superposition(IEnumerable<FloatCurve> curves)
         {
@@ -218,6 +229,57 @@ namespace KerbalWindTunnel.Extensions
             for (int i = 0; i < length; i++)
                 result.Add(sortedUniqueKeys[i], values[i], inTangents[i], outTangents[i]);
             return result;
+        }
+        public delegate bool KeyframeMargins(float valueError, float valueAbsoluteError, float tangentDifference, float tangentError);
+        internal static bool DefaultMargins(float valueError, float _, float tangentDifference, float tangentError)
+        {
+            const float stdValueError = 0.005f / 100;
+            const float stdTangentDifference = 0.5f / 100;
+            const float stdTangentError = 1f / 100;
+#if DEBUG
+            bool valueValid = Mathf.Abs(valueError) < stdValueError;
+            bool tangentValid = Mathf.Abs(tangentDifference) < stdTangentDifference;
+            bool tanErrValid = Mathf.Abs(tangentError) < stdTangentError;
+#endif
+            if (float.IsNaN(valueError) || float.IsNaN(tangentDifference) || float.IsNaN(tangentError))
+                return false;
+            return Mathf.Abs(valueError) < stdValueError &&
+                Mathf.Abs(tangentDifference) < stdTangentDifference &&
+                Mathf.Abs(tangentError) < stdTangentError;
+        }
+        private class KeyframeTimeEqualityComparer : IEqualityComparer<Keyframe>
+        {
+            public bool Equals(Keyframe x, Keyframe y)
+                => x.time.Equals(y.time);
+            public int GetHashCode(Keyframe obj)
+                => obj.time.GetHashCode();
+        }
+        private static readonly KeyframeTimeEqualityComparer keyframeTimeEqualityComparer = new KeyframeTimeEqualityComparer();
+        public static void Simplify(this FloatCurve curve, KeyframeMargins removalPredicate = null)
+        {
+            if (removalPredicate == null)
+                removalPredicate = DefaultMargins;
+            List<Keyframe> keyframes = new List<Keyframe>(curve.Curve.keys);
+            for (int i = 1; i < keyframes.Count - 1; i++)
+            {
+                float computedValue = EvaluateFloatCurveKeyframe(keyframes[i].time, keyframes[i - 1], keyframes[i + 1]);
+                float computedTangent = EvaluateFloatCurveDerivativeKeyframe(keyframes[i].time, keyframes[i - 1], keyframes[i + 1]);//(EvaluateFloatCurveKeyframe(keyframes[i].time + delta, keyframes[i - 1], keyframes[i + 1]) - computedValue) / delta;
+                float averageTangent = (keyframes[i].inTangent + keyframes[i].outTangent) * 0.5f;
+                if (removalPredicate(
+                    (computedValue - keyframes[i].value) / keyframes[i].value,
+                    computedValue - keyframes[i].value,
+                    (keyframes[i].outTangent - keyframes[i].inTangent) / averageTangent,
+                    (computedTangent - averageTangent) / averageTangent))
+                {
+                    keyframes.RemoveAt(i);
+                    i--;
+                }
+            }
+            for (int i = curve.Curve.keys.Length - 2; i >= 1; i--)
+            {
+                if (!keyframes.Contains(curve.Curve.keys[i], keyframeTimeEqualityComparer))
+                    curve.Curve.RemoveKey(i);
+            }
         }
 
         public static System.Data.DataTable WriteToDataTable(this FloatCurve curve)

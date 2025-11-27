@@ -201,7 +201,11 @@ namespace KerbalWindTunnel.VesselCache
             foreach (var bodyGroup in parts.Where(p => FloatCurveIsValid(p.LiftMachScalarCurve) && FloatCurveIsValid(p.LiftCoefficientCurve)).GroupBy(p => p.LiftMachScalarCurve, FloatCurveComparer.Instance))
                 bodyLift.Add((bodyGroup.Key.Clone(), KSPClassExtensions.Superposition(bodyGroup.Select(s => s.LiftCoefficientCurve))));
 
+            foreach (var (_, liftCurve) in bodyLift)
+                liftCurve.Simplify();
+
             bodyDrag = dragSuperposition.Result;
+            bodyDrag = FloatCurve2.Simplify(bodyDrag, 1);
         }
         private void CombineSurfaces(Task _)
         {
@@ -215,6 +219,13 @@ namespace KerbalWindTunnel.VesselCache
                 surfaceDragI.Add((surfGroup.Key.Clone(), KSPClassExtensions.Superposition(surfGroup.Select(s => s.DragCoefficientCurve_Induced))));
             foreach (var surfGroup in allSurfaces.Where(s => FloatCurveIsValid(s.DragMachScalarCurve) && FloatCurveIsValid(s.DragCoefficientCurve_Parasite)).GroupBy(s => s.DragMachScalarCurve, FloatCurveComparer.Instance))
                 surfaceDragP.Add((surfGroup.Key.Clone(), KSPClassExtensions.Superposition(surfGroup.Select(s => s.DragCoefficientCurve_Parasite))));
+
+            foreach (var (_, liftCurve) in surfaceLift)
+                liftCurve.Simplify();
+            foreach (var (_, liftCurve) in surfaceDragI)
+                liftCurve.Simplify();
+            foreach (var (_, liftCurve) in surfaceDragP)
+                liftCurve.Simplify();
 
             ctrlDeltaDragPos = posSuperposition.Result;
             ctrlDeltaDragNeg = negSuperposition.Result;
