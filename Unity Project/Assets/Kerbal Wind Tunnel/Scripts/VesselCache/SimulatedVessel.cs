@@ -276,7 +276,7 @@ namespace KerbalWindTunnel.VesselCache
                 return this.FindMaxAoA(conditions, out float lift, 30 * Mathf.Deg2Rad);
             }
 
-            maxAoA = KSPClassExtensions.ComputeFloatCurve(AoAMachs, GetAoAMax, machStep);
+            maxAoA = FloatCurveExtensions.ComputeFloatCurve(AoAMachs, GetAoAMax, machStep);
 
 #if ENABLE_PROFILER
             UnityEngine.Profiling.Profiler.EndSample();
