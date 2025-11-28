@@ -268,11 +268,11 @@ namespace KerbalWindTunnel.VesselCache
 #endif
             FindAoAMachs();
 
-            Conditions baseConditions = new Conditions(WindTunnelWindow.Instance.CelestialBody ?? Planetarium.fetch.Home, 0, 0);
+            CelestialBody body = WindTunnelWindow.Instance.CelestialBody;
 
             float GetAoAMax(float mach)
             {
-                Conditions conditions = new Conditions(baseConditions.body, baseConditions.speedOfSound * mach, 0);
+                Conditions conditions = Conditions.ConditionsByMach(body, mach, 0);
                 return this.FindMaxAoA(conditions, out float lift, 30 * Mathf.Deg2Rad);
             }
 
@@ -322,7 +322,7 @@ namespace KerbalWindTunnel.VesselCache
                 m++;
             }
 
-            Conditions baseConditions = new Conditions(WindTunnelWindow.Instance.CelestialBody ?? Planetarium.fetch.Home, 0, 0);
+            CelestialBody body = WindTunnelWindow.Instance.CelestialBody;
 
             for (int i = -180; i <= 180; i += 5)
             {
@@ -333,10 +333,7 @@ namespace KerbalWindTunnel.VesselCache
                 m = 1;
                 foreach (float mach in AoAMachs)
                 {
-                    float speed = baseConditions.speedOfSound * mach;
-                    if (speed == 0)
-                        speed = 0.001f;
-                    Conditions conditions = new Conditions(baseConditions.body, speed, 0);
+                    Conditions conditions = Conditions.ConditionsByMach(body, mach, 0, true);
                     Vector3 force = GetAeroForce(conditions, aoa);
                     dragRow[m] = GetDragForceComponent(force, aoa) / conditions.Q;
                     liftRow[m] = GetLiftForceComponent(force, aoa) / conditions.Q;

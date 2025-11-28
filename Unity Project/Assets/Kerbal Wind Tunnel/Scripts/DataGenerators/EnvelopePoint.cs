@@ -7,7 +7,6 @@ namespace KerbalWindTunnel.DataGenerators
 {
     public readonly struct EnvelopePoint
     {
-        private const float minSpeed = 0.001f;
         private static readonly Unity.Profiling.ProfilerMarker s_ctorMarker = new Unity.Profiling.ProfilerMarker("EnvelopePoint..ctor");
         
         public readonly float AoA_level;
@@ -31,7 +30,7 @@ namespace KerbalWindTunnel.DataGenerators
         public readonly float altitude;
         public readonly float speed;
         public readonly float mach;
-        public readonly float dynamicPressure;
+        public readonly float invDynamicPressure;
 
         public readonly float invMass;
         private readonly float invWingArea;
@@ -43,14 +42,13 @@ namespace KerbalWindTunnel.DataGenerators
         public float Power_Available { get => thrust_available * speed; }
         public float Power_Excess { get => Thrust_Excess * speed; }
 
-        public float Coefficient(float force) => force * invWingArea / dynamicPressure;
+        public float Coefficient(float force) => force * invWingArea * invDynamicPressure;
         public float Specific(float value) => value * invMass * WindTunnelWindow.invGAccel;
 
         public EnvelopePoint(AeroPredictor vessel, CelestialBody body, float altitude, float speed, float AoA_guess = float.NaN, float maxA_guess = float.NaN, float pitchI_guess = float.NaN)
         {
             s_ctorMarker.Begin();
             this.altitude = altitude;
-            this.speed = speed = Math.Max(speed, minSpeed);
             invMass = 1 / vessel.Mass;
             invWingArea = 1 / vessel.Area;
             AeroPredictor.Conditions conditions = new AeroPredictor.Conditions(body, speed, altitude);
@@ -59,7 +57,7 @@ namespace KerbalWindTunnel.DataGenerators
             radius = (float)body.Radius;
             float r = radius + altitude;
             mach = conditions.mach;
-            dynamicPressure = 0.0005f * conditions.atmDensity * speed * speed;
+            invDynamicPressure = 1 / conditions.Q;
             float weight = vessel.Mass * (gravParameter / (r * r) - speed * speed / r);
 
             AoA_max = vessel.FindMaxAoA(conditions, out lift_max, maxA_guess);

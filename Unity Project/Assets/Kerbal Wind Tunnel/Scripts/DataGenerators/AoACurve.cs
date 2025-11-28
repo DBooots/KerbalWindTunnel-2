@@ -169,7 +169,7 @@ namespace KerbalWindTunnel.DataGenerators
             if (AoAPoints == null)
                 return;
 
-            AverageLiftSlope = AoAPoints.Select(pt => pt.dLift / pt.dynamicPressure).Where(v => !float.IsNaN(v) && !float.IsInfinity(v)).Average();
+            AverageLiftSlope = AoAPoints.Select(pt => pt.dLift * pt.invDynamicPressure).Where(v => !float.IsNaN(v) && !float.IsInfinity(v)).Average();
 
             foreach (GraphDefinition graphDefinition in graphDefinitions)
             {
@@ -189,7 +189,7 @@ namespace KerbalWindTunnel.DataGenerators
             public readonly float altitude;
             public readonly float speed;
             public readonly float AoA;
-            public readonly float dynamicPressure;
+            public readonly float invDynamicPressure;
             public readonly float dLift;
             public readonly float mach;
             public readonly float pitchInput;
@@ -200,8 +200,9 @@ namespace KerbalWindTunnel.DataGenerators
             public readonly float torque_dry;
             public readonly bool completed;
             private readonly float wingArea;
+            private readonly float invWingArea;
 
-            public float Coefficient(float force) => force / (dynamicPressure * wingArea);
+            public float Coefficient(float force) => force * invDynamicPressure * invWingArea;
 
             public AoAPoint(AeroPredictor vessel, CelestialBody body, float altitude, float speed, float AoA)
             {
@@ -210,7 +211,7 @@ namespace KerbalWindTunnel.DataGenerators
                 AeroPredictor.Conditions conditions = new AeroPredictor.Conditions(body, speed, altitude);
                 this.AoA = AoA;
                 this.mach = conditions.mach;
-                this.dynamicPressure = 0.0005f * conditions.atmDensity * speed * speed;
+                this.invDynamicPressure = conditions.Q;
                 this.pitchInput = vessel.FindStablePitchInput(conditions, AoA);
                 this.pitchInput_dry = vessel.FindStablePitchInput(conditions, AoA, dryTorque: true);
                 Vector3 force = AeroPredictor.ToFlightFrame(vessel.GetAeroForce(conditions, AoA, pitchInput), AoA);
@@ -227,6 +228,7 @@ namespace KerbalWindTunnel.DataGenerators
                 /*staticMargin = vessel.GetStaticMargin(conditions, AoA, pitchInput, dLift: dLift, baselineTorque: torque);
                 staticMargin_dry = vessel.GetStaticMargin(conditions, AoA, pitchInput, dryTorque: true, dLift: dLift, baselineTorque: torque_dry);*/
                 wingArea = vessel.Area;
+                invWingArea = 1 / wingArea;
                 completed = true;
             }
 

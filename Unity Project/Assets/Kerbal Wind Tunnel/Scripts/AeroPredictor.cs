@@ -218,6 +218,9 @@ namespace KerbalWindTunnel
 
         public readonly struct Conditions
         {
+            public const float minSpeed = 0.0001f;
+            public const float minSpeedPseudoReynolds = 0.1f;
+
             public readonly CelestialBody body;
             public readonly float speed;
             public readonly float altitude;
@@ -229,27 +232,38 @@ namespace KerbalWindTunnel
             public readonly float speedOfSound;
             public readonly float Q;
 
-            public Conditions(CelestialBody body, float speed, float altitude)
+            public Conditions(CelestialBody body, float speed, float altitude, bool restrictPseudoReMult = false) : this(body, speed, altitude, false, restrictPseudoReMult) { }
+            private Conditions(CelestialBody body, float speed, float altitude, bool speedIsMach, bool restrictPseudoReMult = false)
             {
                 this.body = body;
-                this.speed = speed;
                 this.altitude = altitude;
-                
+
                 lock (body)
                 {
                     atmPressure = (float)body.GetPressure(altitude);
                     atmDensity = (float)Extensions.KSPClassExtensions.GetDensity(body, altitude);
-                    speedOfSound = (float) body.GetSpeedOfSound(atmPressure, atmDensity);
+                    speedOfSound = (float)body.GetSpeedOfSound(atmPressure, atmDensity);
                     oxygenAvailable = body.atmosphereContainsOxygen;
                 }
-                mach = speed / speedOfSound;
-                if (float.IsInfinity(mach))
-                    mach = float.MaxValue;
-                
+                if (speedIsMach)
+                {
+                    mach = speed;
+                    speed *= speedOfSound;
+                }
+                else
+                {
+                    mach = speed / speedOfSound;
+                    if (float.IsInfinity(mach))
+                        mach = float.MaxValue;
+                }
+                this.speed = Mathf.Max(speed, minSpeed);
+
                 lock (PhysicsGlobals.DragCurvePseudoReynolds)
-                    pseudoReDragMult = PhysicsGlobals.DragCurvePseudoReynolds.Evaluate(atmDensity * speed);
+                    pseudoReDragMult = PhysicsGlobals.DragCurvePseudoReynolds.Evaluate(atmDensity * (restrictPseudoReMult ? Mathf.Max(speed, minSpeedPseudoReynolds) : speed));
                 Q = 0.0005f * atmDensity * this.speed * this.speed;
             }
+            public static Conditions ConditionsByMach(CelestialBody body, float mach, float altitude, bool restrictPseudoReMult = false)
+                => new Conditions(body, mach, altitude, true, restrictPseudoReMult);
         }
     }
 }

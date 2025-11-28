@@ -258,12 +258,12 @@ namespace KerbalWindTunnel.VesselCache
             foreach (FloatCurve curve in vessel.surfaceLift.Select(curveSet => curveSet.machCurve))
                 machKeys.UnionWith(curve.Curve.keys.Select(k => k.time));
 
-            CelestialBody body = WindTunnelWindow.Instance.CelestialBody ?? Planetarium.fetch.Home;
+            CelestialBody body = WindTunnelWindow.Instance.CelestialBody;
+
             float FindMaxLDAoAForMach(float mach)
             {
                 float altitude = machAltitude.EvaluateThreadSafe(mach);
-                AeroPredictor.Conditions conditions = new AeroPredictor.Conditions(body, 0, altitude);
-                conditions = new AeroPredictor.Conditions(body, Mathf.Max(conditions.speedOfSound * mach, 1), altitude);
+                AeroPredictor.Conditions conditions = AeroPredictor.Conditions.ConditionsByMach(body, mach, altitude, true);
                 double CalculateLD(double aoa)
                 {
                     float aoa_ = (float)aoa;

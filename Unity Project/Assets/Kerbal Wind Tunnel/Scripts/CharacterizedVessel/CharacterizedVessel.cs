@@ -245,11 +245,11 @@ namespace KerbalWindTunnel.VesselCache
             foreach (var (liftMachCurve, _) in bodyLift)
                 machKeys.UnionWith(liftMachCurve.ExtractTimes());
 
-            Conditions baseConditions = new Conditions(WindTunnelWindow.Instance.CelestialBody ?? Planetarium.fetch.Home, 0, 0);
+            CelestialBody body = WindTunnelWindow.Instance.CelestialBody;
 
             float GetAoAMax(float mach)
             {
-                Conditions conditions = new Conditions(baseConditions.body, baseConditions.speedOfSound * mach, 0);
+                Conditions conditions = Conditions.ConditionsByMach(body, mach, 0);
                 return this.FindMaxAoA(conditions, out float lift, 30 * Mathf.Deg2Rad); // TODO: Use some heuristic based on the keys to have a good guess.
             }
 
@@ -309,9 +309,8 @@ namespace KerbalWindTunnel.VesselCache
             }
             magnitude += bodyDrag * conditions.pseudoReDragMult;
 
-            float Q = 0.0005f * conditions.atmDensity * conditions.speed * conditions.speed;
             s_evalDragMarker.End();
-            return magnitude * Q;
+            return magnitude * conditions.Q;
         }
 
         public override float GetDragForceMagnitude(Conditions conditions, float AoA, float pitchInput = 0)
@@ -441,8 +440,7 @@ namespace KerbalWindTunnel.VesselCache
                 magnitude += liftCurve.EvaluateDerivative(AoA) * machValue;
             }
 
-            float Q = 0.0005f * conditions.atmDensity * conditions.speed * conditions.speed;
-            magnitude *= Q;
+            magnitude *= conditions.Q;
 
             foreach (PartCollection collection in partCollections)
             {
