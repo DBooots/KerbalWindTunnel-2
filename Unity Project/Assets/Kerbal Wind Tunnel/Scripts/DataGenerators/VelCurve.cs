@@ -35,7 +35,10 @@ namespace KerbalWindTunnel.DataGenerators
             new LineGraphDefinition("pitch_input", ToVector(p => p.pitchInput * 100)) { DisplayName = "#autoLOC_KWT315", YUnit = "#autoLOC_KWT003", StringFormat = "N0", Color = defaultColor },    // "Pitch Input" "%"
             /*new LineGraphDefinition("staticMargin", ToVector(p => p.speed >= 40 ? p.staticMargin * 100 : float.NaN)) { DisplayName = "#autoLOC_KWT336", YUnit = "#autoLOC_KWT014", StringFormat = "F2" },   // "Static Margin" "% MAC"
             new LineGraphDefinition("stabilityDerivative", ToVector(p => p.dTorque)) { DisplayName = "#autoLOC_KWT339", YUnit = "#autoLOC_KWT009", StringFormat = "F2" },*/   // "Stability Derivative" "kNm/°"
-            new LineGraphDefinition("accel_excess", ToVector(p => p.Accel_Excess)) { DisplayName = "#autoLOC_KWT330", YUnit = "#autoLOC_KWT006", StringFormat = "N2", Color = defaultColor, Enabled = false } // "Excess Acceleration" "g"
+            new LineGraphDefinition("accel_excess", ToVector(p => p.Accel_Excess)) { DisplayName = "#autoLOC_KWT330", YUnit = "#autoLOC_KWT006", StringFormat = "N2", Color = defaultColor, Enabled = false },  // "Excess Acceleration" "g"
+            new LineGraphDefinition("aoa_glide", ToVector(p => p.AoA_gliding * Mathf.Rad2Deg)) { DisplayName = "Glide AoA", YUnit = "#autoLOC_KWT000", StringFormat = "F2", Enabled = WindTunnelSettings.EnableGlidingCalcs },
+            new LineGraphDefinition("fpa_glide", ToVector(p => p.glideAngle * Mathf.Rad2Deg)) { DisplayName = "Glide Angle", YUnit = "#autoLOC_KWT000", StringFormat = "F2", Enabled = WindTunnelSettings.EnableGlidingCalcs }
+            //new LineGraphDefinition("ldRatio_glide", ToVector(p => p.LDRatioGliding)) { DisplayName = "Glide Ratio", YUnit = "#autoLOC_KWT015", StringFormat = "F2", Enabled = WindTunnelSettings.EnableGlidingCalcs }
         };
 
         public void SetCoefficientMode(bool useCoefficients)

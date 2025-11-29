@@ -619,7 +619,7 @@ namespace KerbalWindTunnel
         }
         private float SetEnvelopeDetails()
         {
-            EnvelopePoint pointDetails = new EnvelopePoint(vessel, CelestialBody, HighlightAltitude, HighlightSpeed);
+            EnvelopePoint pointDetails = new EnvelopePoint(vessel, CelestialBody, HighlightAltitude, HighlightSpeed, forceGlideCalc: true);
             envelopeInfo.Text = pointDetails.ToString();
             return pointDetails.AoA_level;
         }
@@ -654,7 +654,7 @@ namespace KerbalWindTunnel
         }
         private float SetVelDetails()
         {
-            EnvelopePoint pointDetails = new EnvelopePoint(vessel, CelestialBody, HighlightAltitude, HighlightSpeed);
+            EnvelopePoint pointDetails = new EnvelopePoint(vessel, CelestialBody, HighlightAltitude, HighlightSpeed, forceGlideCalc: true);
             velCurveInfo.Text = pointDetails.ToString();
             return pointDetails.AoA_level;
         }
@@ -986,6 +986,13 @@ namespace KerbalWindTunnel
 
             envelopeData.envelope.Visible = WindTunnelSettings.ShowEnvelopeMaskAlways
                     || (WindTunnelSettings.ShowEnvelopeMask && !envelopeCollection[envelopeDropdown.Value].Name.EndsWith("_excess"));
+
+            foreach (var graph in envelopeData.graphDefinitions.Where(g => g.name.EndsWith("_glide")))
+                graph.Enabled = WindTunnelSettings.EnableGlidingCalcs;
+            foreach (var graph in velData.graphDefinitions.Where(g => g.name.EndsWith("_glide")))
+                graph.Enabled = WindTunnelSettings.EnableGlidingCalcs;
+            SetEnvelopeOptions(envelopeData.graphDefinitions.Where(g => g.Enabled && g.Graph is SurfGraph).Select(g => g.DisplayName));
+            SetToggleOptions(velToggleArray, velData.graphDefinitions.Where(g => g.Enabled));
 
             if (WindTunnelSettings.UseCharacterized != vessel is VesselCache.CharacterizedVessel)
                 WatchAsync(RefreshData());
