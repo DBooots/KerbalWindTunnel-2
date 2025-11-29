@@ -415,7 +415,7 @@ namespace KerbalWindTunnel.VesselCache
             {
                 // A/B. The root does not exist.
                 knowns_.glidingFlight = (float)rootFinder.Solution;
-                knowns_.glidingFlightResidual = (float)rootFinder.Value;
+                knowns_.glidingFlightResidual = Mathf.Sqrt((float)rootFinder.Value);
                 return knowns_;
             }
             // C. The root exists and is near the calculated solution.
