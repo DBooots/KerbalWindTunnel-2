@@ -49,7 +49,7 @@ namespace KerbalWindTunnel.DataGenerators
             new SurfGraphDefinition("fuel_rate", p => p.fuelBurnRate) { DisplayName = "#autoLOC_KWT341", ZUnit = "#autoLOC_KWT012", StringFormat = "F3" },   // "Fuel Burn Rate" "kg/s"
             new SurfGraphDefinition("accel_excess", p => p.Accel_Excess) { DisplayName = "#autoLOC_KWT330", ZUnit = "#autoLOC_KWT006", StringFormat = "N2", CMin = 0, Enabled = false },    // "Excess Acceleration" "g"
             new SurfGraphDefinition("aoa_glide", p => p.AoA_gliding * Mathf.Rad2Deg) { DisplayName = "#autoLOC_KWT355", ZUnit = "#autoLOC_KWT000", StringFormat = "F2", Enabled = WindTunnelSettings.EnableGlidingCalcs },  // "Glide AoA" "°"
-            new SurfGraphDefinition("fpa_glide", p => p.glideAngle * Mathf.Rad2Deg) { DisplayName = "#autoLOC_KWT355", ZUnit = "#autoLOC_KWT000", StringFormat = "F2", Enabled = WindTunnelSettings.EnableGlidingCalcs }    // "Glide Angle" "°"
+            new SurfGraphDefinition("fpa_glide", p => p.glideAngle * Mathf.Rad2Deg) { DisplayName = "#autoLOC_KWT358", ZUnit = "#autoLOC_KWT000", StringFormat = "F2", Enabled = WindTunnelSettings.EnableGlidingCalcs }    // "Glide Angle" "°"
             //new SurfGraphDefinition("ldRatio_glide", p => p.LDRatioGliding) { DisplayName = "#autoLOC_KWT356", ZUnit = "#autoLOC_KWT015", StringFormat = "F2", Enabled = WindTunnelSettings.EnableGlidingCalcs }    // "Glide Ratio" "-"
         };
         //graphables.Add(new SurfGraph(blank, left, right, bottom, top) { Name = "Stability Range", ZUnit = "deg", StringFormat = "F2", ColorScheme = Graphing.Extensions.GradientExtensions.Jet_Dark });
