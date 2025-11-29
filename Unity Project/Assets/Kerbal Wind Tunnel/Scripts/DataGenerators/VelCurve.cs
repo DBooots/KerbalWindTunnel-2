@@ -32,7 +32,7 @@ namespace KerbalWindTunnel.DataGenerators
             new LineGraphDefinition("drag_coefSwap", null) { DisplayName = "#autoLOC_KWT311", Color = defaultColor },   // "Drag"
             new LineGraphDefinition("fuel_economy", ToVector(p => p.fuelBurnRate / p.speed * 100 * 1000)) { DisplayName = "#autoLOC_KWT340", YUnit = "#autoLOC_KWT011", StringFormat = "F2", Color = defaultColor, Enabled = false }, // "Fuel Economy" "kg/100 km"
             new LineGraphDefinition("fuel_rate", ToVector(p => p.fuelBurnRate)) { DisplayName = "#autoLOC_KWT341", YUnit = "#autoLOC_KWT012", StringFormat = "F3", Color = defaultColor, Enabled = false }, // "Fuel Burn Rate" "kg/s"
-            new LineGraphDefinition("pitch_input", ToVector(p => p.pitchInput * 100)) { DisplayName = "#autoLOC_KWT315", YUnit = "#autoLOC_KWT003", StringFormat = "N0", Color = defaultColor },  // "Pitch Input" "%"
+            new LineGraphDefinition("pitch_input", ToVector(p => p.pitchInput * 100)) { DisplayName = "#autoLOC_KWT315", YUnit = "#autoLOC_KWT003", StringFormat = "N0", Color = defaultColor },    // "Pitch Input" "%"
             /*new LineGraphDefinition("staticMargin", ToVector(p => p.speed >= 40 ? p.staticMargin * 100 : float.NaN)) { DisplayName = "#autoLOC_KWT336", YUnit = "#autoLOC_KWT014", StringFormat = "F2" },   // "Static Margin" "% MAC"
             new LineGraphDefinition("stabilityDerivative", ToVector(p => p.dTorque)) { DisplayName = "#autoLOC_KWT339", YUnit = "#autoLOC_KWT009", StringFormat = "F2" },*/   // "Stability Derivative" "kNm/°"
             new LineGraphDefinition("accel_excess", ToVector(p => p.Accel_Excess)) { DisplayName = "#autoLOC_KWT330", YUnit = "#autoLOC_KWT006", StringFormat = "N2", Color = defaultColor, Enabled = false } // "Excess Acceleration" "g"
