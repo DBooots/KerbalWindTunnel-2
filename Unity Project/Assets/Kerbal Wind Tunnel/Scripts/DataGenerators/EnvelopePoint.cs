@@ -49,6 +49,7 @@ namespace KerbalWindTunnel.DataGenerators
         {
             s_ctorMarker.Begin();
             this.altitude = altitude;
+            this.speed = speed;
             invMass = 1 / vessel.Mass;
             invWingArea = 1 / vessel.Area;
             AeroPredictor.Conditions conditions = new AeroPredictor.Conditions(body, speed, altitude);
@@ -76,7 +77,6 @@ namespace KerbalWindTunnel.DataGenerators
 
             thrust_available = AeroPredictor.GetUsefulThrustMagnitude(thrustForce);
 
-            //Vector3 force = vessel.GetAeroForce(conditions, AoA_level, pitchInput);
             vessel.GetAeroCombined(conditions, AoA_level, pitchInput, out Vector3 force, out Vector3 torque);
             Vector3 aeroforce = AeroPredictor.ToFlightFrame(force, AoA_level);
             drag = -aeroforce.z;

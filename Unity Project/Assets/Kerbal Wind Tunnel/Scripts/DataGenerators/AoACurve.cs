@@ -211,7 +211,7 @@ namespace KerbalWindTunnel.DataGenerators
                 AeroPredictor.Conditions conditions = new AeroPredictor.Conditions(body, speed, altitude);
                 this.AoA = AoA;
                 this.mach = conditions.mach;
-                this.invDynamicPressure = conditions.Q;
+                this.invDynamicPressure = 1 / conditions.Q;
                 this.pitchInput = vessel.FindStablePitchInput(conditions, AoA);
                 this.pitchInput_dry = vessel.FindStablePitchInput(conditions, AoA, dryTorque: true);
                 Vector3 force = AeroPredictor.ToFlightFrame(vessel.GetAeroForce(conditions, AoA, pitchInput), AoA);
