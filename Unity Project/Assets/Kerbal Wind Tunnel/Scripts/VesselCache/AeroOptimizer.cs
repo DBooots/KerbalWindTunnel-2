@@ -27,15 +27,15 @@ namespace KerbalWindTunnel.VesselCache
             if (predictor is IDirectAoAMaxProvider aoaProvider && aoaProvider.DirectAoAInitialized)
             {
                 result = aoaProvider.GetAoAMax(conditions);
-                lift = (float)predictor.AerodynamicObjectiveFunc(conditions, pitchInput)(result);
+                lift = (float)predictor.AerodynamicLiftObjectiveFunc(conditions, pitchInput)(result);
             }
             else
             {
                 IOptimizationMethod<double, double> optimizationMethod;
                 if (predictor is ILiftAoADerivativePredictor derivativePredictor)
-                    optimizationMethod = FindMaxAoA_NoDerivative(predictor.AerodynamicObjectiveFunc(conditions, pitchInput, -1), guess, tolerance);
+                    optimizationMethod = FindMaxAoA_NoDerivative(predictor.AerodynamicLiftObjectiveFunc(conditions, pitchInput, -1), guess, tolerance);
                 else
-                    optimizationMethod = FindMaxAoA_NoDerivative(predictor.AerodynamicObjectiveFunc(conditions, pitchInput, -1), guess, tolerance);
+                    optimizationMethod = FindMaxAoA_NoDerivative(predictor.AerodynamicLiftObjectiveFunc(conditions, pitchInput, -1), guess, tolerance);
                 lift = -(float)optimizationMethod.Value;
                 result = (float)optimizationMethod.Solution;
             }
@@ -88,9 +88,9 @@ namespace KerbalWindTunnel.VesselCache
             s_findMin.Begin();
             IOptimizationMethod<double, double> optimizationMethod;
             if (predictor is ILiftAoADerivativePredictor derivativePredictor)
-                optimizationMethod = FindMinAoA_NoDerivative(predictor.AerodynamicObjectiveFunc(conditions, pitchInput), guess, tolerance);
+                optimizationMethod = FindMinAoA_NoDerivative(predictor.AerodynamicLiftObjectiveFunc(conditions, pitchInput), guess, tolerance);
             else
-                optimizationMethod = FindMinAoA_NoDerivative(predictor.AerodynamicObjectiveFunc(conditions, pitchInput), guess, tolerance);
+                optimizationMethod = FindMinAoA_NoDerivative(predictor.AerodynamicLiftObjectiveFunc(conditions, pitchInput), guess, tolerance);
             s_findMin.End();
             return (float)optimizationMethod.Solution;
         }
@@ -224,7 +224,7 @@ namespace KerbalWindTunnel.VesselCache
 #endif
         }
 
-        public static KeyAoAData SolveLevelFlight(this AeroPredictor predictor, Conditions conditions, float weight, KeyAoAData? knowns, KeyAoAData? guess = null)
+        public static KeyAoAData SolveLevelFlight(this AeroPredictor predictor, Conditions conditions, float weight, KeyAoAData? knowns, KeyAoAData? guess = null, float tolerance = defaultAoATolerance)
         {
             // 1. If we have a guess, it's probably within +/- 5 degrees
             // If it's not, the guess is bad and we'll search from scratch
@@ -254,7 +254,7 @@ namespace KerbalWindTunnel.VesselCache
                 knowns_.levelFlightResidual = -(float)levelObjFunc(knowns_.levelFlight);
                 return knowns_;
             }
-            BrentSearch rootFinder = new BrentSearch(levelObjFunc, 0, 35, defaultAoATolerance);
+            BrentSearch rootFinder = new BrentSearch(levelObjFunc, 0, 35, tolerance);
 
             // 1. Use a good guess, if we have it.
             float levelGuess = guess?.levelFlight ?? float.NaN;

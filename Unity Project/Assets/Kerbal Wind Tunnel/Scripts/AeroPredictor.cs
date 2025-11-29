@@ -16,12 +16,36 @@ namespace KerbalWindTunnel
         public abstract float Area { get; }
         public virtual float MAC { get; protected set; }
 
-        public virtual Func<double, double> AerodynamicObjectiveFunc(Conditions conditions, float pitchInput, int scalar = 1)
+        /// <summary>
+        /// Generates the lift objective function, which is a function that maps to the lift force given an angle of attack, for defined conditions.
+        /// Used for minimization/maximization and root finding.
+        /// </summary>
+        /// <param name="conditions">The conditions.</param>
+        /// <param name="pitchInput">The pitch input.</param>
+        /// <param name="scalar">A scalar that inverts the output when set to -1. This is used to enable minimization when the peak lift is desired.</param>
+        /// <returns>A function that maps to the lift force given an angle of attack.</returns>
+        /// <exception cref="System.ArgumentException">Scalar must be 1 or -1.</exception>
+        public virtual Func<double, double> AerodynamicLiftObjectiveFunc(Conditions conditions, float pitchInput, int scalar = 1)
         {
-            double AerodynamicObjectiveFuncInternal(double aoa) =>
-                GetLiftForceMagnitude(conditions, (float)aoa, pitchInput) * scalar;
+            if (scalar != 1 && scalar != -1)
+                throw new ArgumentException("Scalar must be 1 or -1.");
+            double AerodynamicObjectiveFuncInternal(double aoa)
+            {
+                float liftMagnitude = GetLiftForceMagnitude(conditions, (float)aoa, pitchInput);
+                if (scalar == -1)
+                    return -liftMagnitude;
+                return liftMagnitude;
+            }
             return AerodynamicObjectiveFuncInternal;
         }
+        /// <summary>
+        /// Generates the level flight objective function, which is a function that maps to the net upwards force on the vessel given an angle of attack, for defined conditions.
+        /// Used for root finding.
+        /// </summary>
+        /// <param name="conditions">The conditions.</param>
+        /// <param name="offsettingForce">The offsetting force (i.e. weight).</param>
+        /// <param name="pitchInput">The pitch input.</param>
+        /// <returns>A function that maps to the net upwards force on the vessel, given an angle of attack.</returns>
         public virtual Func<double, double> LevelFlightObjectiveFunc(Conditions conditions, float offsettingForce, float pitchInput = 0)
         {
             if (ThrustIsConstantWithAoA)
@@ -38,6 +62,14 @@ namespace KerbalWindTunnel
                 return LevelFlightObjectiveFuncInternal;
             }
         }
+        /// <summary>
+        /// Generates the level flight objective function, which is a function that maps to the net upwards force on the vessel given an angle of attack, for defined conditions.
+        /// Used for root finding.
+        /// </summary>
+        /// <param name="conditions">The conditions.</param>
+        /// <param name="offsettingForce">The offsetting force (i.e. weight).</param>
+        /// <param name="pitchInput">A function returning pitch input for the angle of attack to be tested.</param>
+        /// <returns>A function that maps to the net upwards force on the vessel, given an angle of attack.</returns>
         public virtual Func<double, double> LevelFlightObjectiveFunc(Conditions conditions, float offsettingForce, Func<float, float> pitchInput)
         {
             if (ThrustIsConstantWithAoA)
@@ -54,6 +86,14 @@ namespace KerbalWindTunnel
                 return LevelFlightObjectiveFuncInternal;
             }
         }
+        /// <summary>
+        /// Generates the pitch input objective function, which is a function that maps to the net torque (or a proxy thereof) given a pitch input, for defined conditions and angle of attack.
+        /// Used for root finding.
+        /// </summary>
+        /// <param name="conditions">The conditions.</param>
+        /// <param name="aoa">The angle of attack.</param>
+        /// <param name="dryTorque">If set to <c>true</c>, uses the dry torque.</param>
+        /// <returns>A function that maps to the net torque, given a pitch input.</returns>
         public virtual Func<double, double> PitchInputObjectiveFunc(Conditions conditions, float aoa, bool dryTorque = false)
         {
             double PitchInputObjectiveFuncInternal(double input) =>

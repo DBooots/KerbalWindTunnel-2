@@ -88,19 +88,18 @@ namespace KerbalWindTunnel.VesselCache
              *      - Round each to the nearest 1E-8. Math.Round(value,8).
              *  - Make a FloatCurve2 of part drag coefficient for those AoAs and -180:15:180, and Machs.
              *  
-             *      D = f(M, AoA) * f(q)
+             *      D = f(M, AoA) * q * f(V * rho)
              */
 
             /*  Roadmap:
              *  
-             *  Control surfaces can incorporate deflection through a FloatCurve2
-             *      L = f(M) * f(AoA, defL) * f(q)
-             *      D = f(M) * f(AoA, defL) * f(q)
+             *  Control surface drag can incorporate deflection through a FloatCurve2
+             *      L = f(M) * f(AoA, defL) * q
+             *      D = f(M, AoA) * defL * q * f(V * rho)
              * 
              *  Rotor Part Collections cannot be characterized as the velocity and AoA of each part
              *  is a function of the vessel's velocity and the part's local velocity.
-             *  They will be treated as non-rotating.
-             *
+             *  They will be treated separately.
              */
 
 
