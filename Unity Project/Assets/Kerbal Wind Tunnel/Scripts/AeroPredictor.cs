@@ -100,6 +100,33 @@ namespace KerbalWindTunnel
                 GetAeroTorque(conditions, aoa, (float)input, dryTorque).x;
             return PitchInputObjectiveFuncInternal;
         }
+        /// <summary>
+        /// Generates the gliding flight objective function, which is a function that maps to the sum of squares of lift, drag, and weight, for defined conditions.
+        /// </summary>
+        /// <param name="conditions">The conditions.</param>
+        /// <param name="weight">The weight of the vessel.</param>
+        /// <param name="scalar">A scalar that inverts the output when set to -1. This is used to enable minimization when the peak force is desired.</param>
+        /// <returns>A function that maps to the sum of squares of lift, drag, and weight, given an angle of attack.</returns>
+        /// <exception cref="System.ArgumentException">Scalar must be 1 or -1.</exception>
+        public virtual Func<double, double> GlidingObjectiveFunc(Conditions conditions, float weight, int scalar = 1)
+        {
+            if (scalar != 1 && scalar != -1)
+                throw new ArgumentException("Scalar must be 1 or -1.");
+            Vector3 dot = new Vector3(0, 1, 1);
+            float weight2 = weight * weight;
+            double GlidingObjectiveFuncInternal(double aoa)
+            {
+                float aeroForce = Vector3.Dot(GetAeroForce(conditions, (float)aoa), dot);   // Excludes any lateral forces
+                aeroForce *= aeroForce;
+                float result = aeroForce - weight2;
+                if (scalar == -1)
+                    return -result;
+                return result;
+            }
+            return GlidingObjectiveFuncInternal;
+        }
+
+        public abstract (float AoAMinForce, float AoAMaxForce) GetApproxAeroPeaks(Conditions conditions);
 
         public abstract Vector3 GetAeroForce(Conditions conditions, float AoA, float pitchInput = 0);
 

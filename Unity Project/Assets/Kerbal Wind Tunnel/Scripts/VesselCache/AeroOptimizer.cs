@@ -11,6 +11,7 @@ namespace KerbalWindTunnel.VesselCache
         public const float defaultAoAOptTolerance = 1E-5f;
         public const float defaultInputTolerance = 0.01f;
         public const float levelGuessRange = 5 * Mathf.Deg2Rad;
+        public const float glidingGuessRange = 5 * Mathf.Deg2Rad;
 
         private static readonly int[] levelFlightStepdownValues = new int[] { -5, -10, -20, -40, -90 };
 
@@ -214,6 +215,8 @@ namespace KerbalWindTunnel.VesselCache
             public float maxLiftForce = float.NaN;
             public float levelFlight = float.NaN;
             public float levelFlightResidual = 0;
+            public float glidingFlight = float.NaN;
+            public float glidingFlightResidual = 0;
             public KeyAoAData() { }
 #else
             public float zeroLift;
@@ -221,6 +224,8 @@ namespace KerbalWindTunnel.VesselCache
             public float maxLiftForce;
             public float levelFlight;
             public float levelFlightResidual;
+            public float glidingFlight;
+            public float glidingFlightResidual;
 #endif
         }
 
@@ -333,6 +338,94 @@ namespace KerbalWindTunnel.VesselCache
             rootFinder.UpperBound = rootFinder.Solution;
             rootFinder.FindRoot();
             knowns_.levelFlight = (float)rootFinder.Solution;
+            return knowns_;
+        }
+
+        public static KeyAoAData SolveGlidingFlight(this AeroPredictor predictor, Conditions conditions, float weight, KeyAoAData? knowns, KeyAoAData? guess = null, float tolerance = defaultAoATolerance, float optTolerance = defaultAoAOptTolerance)
+        {
+            // 1. If we have a guess, it's probably within +/- 5 degrees
+            // If it's not, the guess is bad and we'll search from scratch
+
+            // 2. AeroPredictors provide approximate values for the gliding flight max and min force aoas.
+            // If those bracket the root, we'll search in that range.
+
+            // 3. If that does not bracket the root, there are three scenarios:
+            // A. The vessel cannot create little enough drag.
+            // B. The vessel cannot create enough drag.
+            // C. The true values would bracket the root, but the approximate values don't quite.
+            // We can know the difference between A and B based on the sign of the objective function at any point in the bracket:
+            // + and it's A, - and it's B.
+            // We'll dig into which approximate value may be bad based by assuming for now that it's A or B.
+
+            // In the case of A: We'll maximize the objective function near the approximate max value. The approximation standard is within 2.5 deg, so we'll search +/- 5 deg.
+            // In the case of B: We'll minimize the objective function near the approximate min value, similarly to A.
+            // If the sign of the objective function changes when looking at the new max or min, we know it's C and that the root is within 5 deg towards the other approximate value.
+
+            KeyAoAData knowns_ = knowns ?? new KeyAoAData();
+
+            Func<double, double> glideObjFunc = predictor.GlidingObjectiveFunc(conditions, weight);
+            if (!float.IsNaN(knowns_.glidingFlight))
+            {
+                knowns_.glidingFlightResidual = -(float)glideObjFunc(knowns_.glidingFlight);
+                return knowns_;
+            }
+            (float approxMin, float approxMax) = predictor.GetApproxAeroPeaks(conditions);
+            BrentSearch rootFinder = new BrentSearch(glideObjFunc, approxMin, approxMax, tolerance);
+
+            // 1. Use a good guess, if we have it.
+            float glideGuess = guess?.glidingFlight ?? float.NaN;
+            if (!float.IsNaN(glideGuess))
+            {
+                rootFinder.LowerBound = glideGuess - glidingGuessRange;
+                rootFinder.UpperBound = glideGuess + glidingGuessRange;
+                if (rootFinder.FindRoot())
+                {
+                    knowns_.glidingFlight = (float)rootFinder.Solution;
+                    return knowns_;
+                }
+            }
+
+            // 2. Use the approximate bracket.
+            rootFinder.LowerBound = approxMin;
+            rootFinder.UpperBound = approxMax;
+            if (rootFinder.FindRoot())
+            {
+                knowns_.glidingFlight = (float)rootFinder.Solution;
+                return knowns_;
+            }
+
+            // 3. The root was not bracketed.
+            int interimSign = Math.Sign(rootFinder.Value);
+            rootFinder.Tolerance = optTolerance;
+            if (interimSign > 0)
+            {
+                // A. Find the true minimum drag value
+                rootFinder.LowerBound = approxMin - glidingGuessRange;
+                rootFinder.UpperBound = approxMin + glidingGuessRange;
+                rootFinder.Minimize();
+            }
+            else
+            {
+                // B. Find the true maximum drag value
+                rootFinder.LowerBound = approxMax - glidingGuessRange;
+                rootFinder.UpperBound = approxMax + glidingGuessRange;
+                rootFinder.Maximize();
+            }
+            if (Math.Sign(rootFinder.Value) == interimSign)
+            {
+                // A/B. The root does not exist.
+                knowns_.glidingFlight = (float)rootFinder.Solution;
+                knowns_.glidingFlightResidual = (float)rootFinder.Value;
+                return knowns_;
+            }
+            // C. The root exists and is near the calculated solution.
+            // FindRoot sorts bounds for me, so I don't need to worry about that.
+            rootFinder.LowerBound = (float)rootFinder.Solution;
+            rootFinder.UpperBound = (float)rootFinder.Solution + glidingGuessRange * interimSign * Math.Sign(approxMax - approxMin);
+            rootFinder.Tolerance = tolerance;
+
+            rootFinder.FindRoot();
+            knowns_.glidingFlight = (float)rootFinder.Solution;
             return knowns_;
         }
 
