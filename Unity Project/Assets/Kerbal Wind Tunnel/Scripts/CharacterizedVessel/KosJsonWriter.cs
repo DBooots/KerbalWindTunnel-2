@@ -269,7 +269,7 @@ namespace KerbalWindTunnel.VesselCache
                     float aoa_ = (float)aoa;
                     return vessel.EvaluateLiftCurve(conditions, aoa_, 0) / vessel.EvaluateDragCurve(conditions, aoa_, 0);
                 }
-                return (float)Accord.Math.Optimization.BrentSearch.Maximize(CalculateLD, -5 * Mathf.Deg2Rad, vessel.AoAMax.Evaluate(mach), AeroOptimizer.defaultAoAOptTolerance);
+                return (float)Accord.Math.Optimization.BrentSearch.Maximize(CalculateLD, -5 * Mathf.Deg2Rad, vessel.AoAMax.EvaluateThreadSafe(mach), AeroOptimizer.defaultAoAOptTolerance);
             }
             return FloatCurveExtensions.ComputeFloatCurve(machKeys, FindMaxLDAoAForMach, 0.15f);
         }

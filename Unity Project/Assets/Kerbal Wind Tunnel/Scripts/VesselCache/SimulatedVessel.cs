@@ -295,7 +295,7 @@ namespace KerbalWindTunnel.VesselCache
         }
 
         public float GetAoAMax(Conditions conditions)
-            => maxAoA.Evaluate(conditions.mach);
+            => AoAMax.EvaluateThreadSafe(conditions.mach);
 
         public bool DirectAoAInitialized { get; protected set; } = false;
 
