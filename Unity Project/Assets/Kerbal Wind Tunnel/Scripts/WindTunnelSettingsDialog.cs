@@ -142,6 +142,18 @@ namespace KerbalWindTunnel
         [Persistent]
         private int rotationCount = 1;
 
+        public static bool EnableGlidingCalcs
+        {
+            get => Instance.enableGlidingCalcs;
+            set
+            {
+                Instance.enableGlidingCalcs = value;
+                settingsChanged = true;
+            }
+        }
+        [Persistent]
+        private bool enableGlidingCalcs = false;
+
         private static bool settingsChanged = false;
         private static bool settingsLoaded = false;
 
@@ -205,6 +217,8 @@ namespace KerbalWindTunnel
 
             if (ToolbarManager.ToolbarAvailable)
                 dialog.Add(new DialogGUIToggle(UseBlizzy, "#autoLOC_KWT108", b => UseBlizzy = b));      // "Use Blizzy's Toolbar"
+
+            dialog.Add(new DialogGUIToggle(EnableGlidingCalcs, "Enable gliding calculations", b => EnableGlidingCalcs = b));
 
             dialog.Add(new DialogGUIButton("#autoLOC_6001205", () =>         // "Accept"
             {
