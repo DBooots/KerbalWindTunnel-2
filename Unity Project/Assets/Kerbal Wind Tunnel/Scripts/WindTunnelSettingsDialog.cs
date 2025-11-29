@@ -218,7 +218,7 @@ namespace KerbalWindTunnel
             if (ToolbarManager.ToolbarAvailable)
                 dialog.Add(new DialogGUIToggle(UseBlizzy, "#autoLOC_KWT108", b => UseBlizzy = b));      // "Use Blizzy's Toolbar"
 
-            dialog.Add(new DialogGUIToggle(EnableGlidingCalcs, "Enable gliding calculations", b => EnableGlidingCalcs = b));
+            dialog.Add(new DialogGUIToggle(EnableGlidingCalcs, "#autoLOC_KWT133", b => EnableGlidingCalcs = b));    // "Enable gliding calculations"
 
             dialog.Add(new DialogGUIButton("#autoLOC_6001205", () =>         // "Accept"
             {
