@@ -30,7 +30,7 @@ namespace KerbalWindTunnel.DataGenerators
         public string YName { get => graph.YName; set => graph.YName = LocalizeIfNeeded(value); }
         public string XUnit { get => graph.XUnit; set => graph.XUnit = LocalizeIfNeeded(value); }
         public string YUnit { get => graph.YUnit; set => graph.YUnit = LocalizeIfNeeded(value); }
-        public bool Enabled { get => enabled; set { enabled = value; graph.Visible &= value; } }
+        public bool Enabled { get => enabled; set { enabled = value; graph.Visible = visible && enabled; } }
         private bool visible = true;
         public bool Visible { get => graph.Visible; set { visible = value; graph.Visible = visible && enabled; } }
 
