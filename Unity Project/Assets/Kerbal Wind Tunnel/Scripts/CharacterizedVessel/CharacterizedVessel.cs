@@ -315,14 +315,14 @@ namespace KerbalWindTunnel.VesselCache
             foreach (float mach in machKeys)
             {
                 Conditions conditions = Conditions.ConditionsByMach(body, mach, 0, true);
-                keys.Add(mach, Extensions.Optimization.PeakFinding.StepMinimize(a => (float)GlidingObjectiveFunc(conditions, 0)(a), 0, -10, out float _, 2));
+                keys.Add(mach, Extensions.Optimization.PeakFinding.StepMinimize(a => (float)GlidingObjectiveFunc(conditions, 0)(a), 0, -10 * Mathf.Deg2Rad, out float _, 2));
             }
             AeroMin = new FloatCurve(machKeys.Select(m => new Keyframe(m, keys[m])).ToArray());
             keys.Clear();
             foreach (float mach in machKeys)
             {
                 Conditions conditions = Conditions.ConditionsByMach(body, mach, 0, true);
-                keys.Add(mach, Extensions.Optimization.PeakFinding.StepMinimize(a => (float)GlidingObjectiveFunc(conditions, 0)(a), 0, -10, out float _, 2));
+                keys.Add(mach, Extensions.Optimization.PeakFinding.StepMaximize(a => (float)GlidingObjectiveFunc(conditions, 0)(a), 0, 10 * Mathf.Deg2Rad, out float _, 2));
             }
             AeroMax = new FloatCurve(machKeys.Select(m => new Keyframe(m, keys[m])).ToArray());
         }
