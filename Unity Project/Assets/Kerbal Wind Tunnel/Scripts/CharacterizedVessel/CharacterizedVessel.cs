@@ -356,15 +356,17 @@ namespace KerbalWindTunnel.VesselCache
             float magnitude = EvaluateDragCurve(conditions, AoA, pitchInput);
             Vector3 result = -magnitude * Vector3.forward;
 
+            magnitude = EvaluateLiftCurve(conditions, AoA, pitchInput);
+            result += magnitude * Vector3.up;
+
+            result = ToVesselFrame(result, AoA);
+
             foreach (PartCollection collection in partCollections)
                 lock (collection)
                     result += collection.GetAeroForce(InflowVect(AoA) * conditions.speed, conditions, pitchInput, out _, Vector3.zero);
 
-            magnitude = EvaluateLiftCurve(conditions, AoA, pitchInput);
-            result += magnitude * Vector3.up;
-
             s_getAeroMarker.End();
-            return ToVesselFrame(result, AoA);
+            return result;
         }
 
         public float EvaluateDragCurve(Conditions conditions, float AoA, float pitchInput)
