@@ -41,8 +41,8 @@ namespace KerbalWindTunnel.VesselCache
         
         private FloatCurve DragCurvePseudoReynolds;
         public FloatCurve AoAMax { get; private set; } = null;
-        public static SortedSet<float> LiftMachs { get; private set; } = null;
-        public static SortedSet<float> DragMachs { get; private set; } = null;
+        public static SortedSet<float> LiftMachs { get; private set; } = new SortedSet<float>();
+        public static SortedSet<float> DragMachs { get; private set; } = new SortedSet<float>();
         private System.Threading.Tasks.Task aeroPeakTaskHandle = null;
         public FloatCurve AeroMin { get; private set; } = null;
         public FloatCurve AeroMax { get; private set; } = null;
@@ -306,7 +306,7 @@ namespace KerbalWindTunnel.VesselCache
         {
             lock (LiftMachs)
             {
-                if (LiftMachs != null)
+                if (LiftMachs.Count > 0)
                     return;
 
                 LiftMachs = new SortedSet<float>();
@@ -318,7 +318,7 @@ namespace KerbalWindTunnel.VesselCache
         {
             lock (DragMachs)
             {
-                if (DragMachs != null)
+                if (DragMachs.Count > 0)
                     return;
 
                 DragMachs = new SortedSet<float>();
