@@ -71,7 +71,7 @@ namespace KerbalWindTunnel.VesselCache
                     torque += pTorque;
                 }
 
-                float Q = 0.0005f * conditions.atmDensity * inflow.sqrMagnitude;
+                float Q = conditions.Q;
                 torque *= Q;
                 aeroForce *= Q;
             }
@@ -107,7 +107,7 @@ namespace KerbalWindTunnel.VesselCache
                     torque += pTorque;
                 }
 
-                float Q = 0.0005f * conditions.atmDensity * inflow.sqrMagnitude;
+                float Q = conditions.Q;
                 torque *= Q;
                 aeroForce *= Q;
             }

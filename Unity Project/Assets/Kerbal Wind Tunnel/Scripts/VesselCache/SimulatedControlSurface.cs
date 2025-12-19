@@ -135,14 +135,6 @@ namespace KerbalWindTunnel.VesselCache
             this.deploymentDirection = surface.deploymentDirection;
         }
 
-        public override Vector3 GetLift(Vector3 velocityVect, float mach)
-        {
-            return GetLift(velocityVect, mach, 0);
-        }
-        public override Vector3 GetLift(Vector3 velocityVect, float mach, out Vector3 torque, Vector3 torquePoint)
-        {
-            return GetLift(velocityVect, mach, 0, out torque, torquePoint);
-        }
         public Vector3 GetLift(Vector3 velocityVect, float mach, float pitchInput, out Vector3 torque, Vector3 torquePoint)
         {
             bool isAheadOfCoM;
@@ -163,37 +155,6 @@ namespace KerbalWindTunnel.VesselCache
             return liftForce;
         }
 
-        /*
-        /// <summary>
-        /// Use <see cref="GetForce(Vector3 velocityVect, float mach, float pseudoReDragMult)"/> instead.
-        /// </summary>
-        /// <param name="velocityVect"></param>
-        /// <param name="mach"></param>
-        /// <returns></returns>
-        public override Vector3 GetForce(Vector3 velocityVect, float mach)
-        {
-            // Air Density: 1.225kg/m3
-            // rho/rho_0 assumed to be 0.5
-            // Speed of sound assumed to be ~300m/s
-            float pseudoReDragMult;
-            lock (part.simCurves.DragCurvePseudoReynolds)
-                pseudoReDragMult = part.simCurves.DragCurvePseudoReynolds.Evaluate((1.225f * 0.5f) * (300f * mach));
-            return base.GetForce(velocityVect, mach) + part.GetAero(velocityVect, mach, pseudoReDragMult);
-        }
-        public override Vector3 GetForce(Vector3 velocityVect, float mach, out Vector3 torque, Vector3 torquePoint)
-        {
-            Vector3 result = base.GetForce(velocityVect, mach, out torque, torquePoint);
-            // Air Density: 1.225kg/m3
-            // rho/rho_0 assumed to be 0.5
-            // Speed of sound assumed to be ~300m/s
-            float pseudoReDragMult;
-            lock (part.simCurves.DragCurvePseudoReynolds)
-                pseudoReDragMult = part.simCurves.DragCurvePseudoReynolds.Evaluate((1.225f * 0.5f) * (300f * mach));
-            result += part.GetAero(velocityVect, mach, pseudoReDragMult, out Vector3 pTorque, torquePoint);
-            torque += pTorque;
-            return result;
-        }*/
-
         public Vector3 GetDrag(Vector3 velocityVect, float mach, float pseudoReDragMult)
             => GetDrag(velocityVect, mach, 0, pseudoReDragMult);
         public Vector3 GetDrag(Vector3 velocityVect, float mach, float pitchInput, float pseudoReDragMult)
@@ -213,13 +174,9 @@ namespace KerbalWindTunnel.VesselCache
         }
 
         public Vector3 GetForce(Vector3 velocityVect, float mach, float pseudoReDragMult)
-        {
-            return GetForce(velocityVect, mach, 0, pseudoReDragMult);
-        }
+            => GetForce(velocityVect, mach, 0, pseudoReDragMult);
         public Vector3 GetForce(Vector3 velocityVect, float mach, float pseudoReDragMult, out Vector3 torque, Vector3 torquePoint)
-        {
-            return GetForce(velocityVect, mach, 0, pseudoReDragMult, out torque, torquePoint);
-        }
+            => GetForce(velocityVect, mach, 0, pseudoReDragMult, out torque, torquePoint);
         public Vector3 GetForce(Vector3 velocityVect, float mach, float pitchInput, float pseudoReDragMult, out Vector3 torque, Vector3 torquePoint)
         {
             bool isAheadOfCoM;
