@@ -86,6 +86,7 @@
     <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\Extensions\KSPClassExtensions.cs" />
     <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\Extensions\Linq2.cs" />
     <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\Extensions\NetObjectDeepCopy.cs" />
+    <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\Extensions\PeakFinding.cs" />
     <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\GraphExportDialog.cs" />
     <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\HighlightManager.cs" />
     <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\KerbalWindTunnel.cs" />

@@ -16,6 +16,7 @@ namespace KerbalWindTunnel.VesselCache
         static readonly Unity.Profiling.ProfilerMarker s_getDragMagMarker = new Unity.Profiling.ProfilerMarker("CharacterizedVessel.GetDragForceMagnitude");
         static readonly Unity.Profiling.ProfilerMarker s_evalLiftMarker = new Unity.Profiling.ProfilerMarker("CharacterizedVessel.EvaluateLiftCurve");
         static readonly Unity.Profiling.ProfilerMarker s_evalDragMarker = new Unity.Profiling.ProfilerMarker("CharacterizedVessel.EvaluateDragCurve");
+        static readonly Unity.Profiling.ProfilerMarker s_getAeroMarker = new Unity.Profiling.ProfilerMarker("CharacterizedVessel.GetAeroForce");
 
         public readonly SimulatedVessel vessel;
 
@@ -42,6 +43,8 @@ namespace KerbalWindTunnel.VesselCache
         internal FloatCurve2 ctrlDeltaDragNeg;
 
         public FloatCurve AoAMax { get; private set; }
+        public FloatCurve AeroMin { get; private set; } = null;
+        public FloatCurve AeroMax { get; private set; } = null;
 
         private readonly List<CharacterizedPart> parts = new List<CharacterizedPart>();
         private readonly List<CharacterizedLiftingSurface> surfaces = new List<CharacterizedLiftingSurface>();
@@ -50,6 +53,7 @@ namespace KerbalWindTunnel.VesselCache
 
         private Task taskHandle = null;
         private Task maxAoATaskHandle = null;
+        private Task aeroPeakTaskHandle = null;
 
         public static readonly Comparer<(float, bool)> FloatTupleComparer = Comparer<(float, bool)>.Create((x, y) =>
         {
@@ -180,8 +184,10 @@ namespace KerbalWindTunnel.VesselCache
 
                 taskHandle = Task.WhenAll(combinePartTask, surfaceTask);
                 maxAoATaskHandle = taskHandle.ContinueWith(CharacterizeMaxAoA);
+                aeroPeakTaskHandle = taskHandle.ContinueWith(CharacterizePeaks);
 #if DEBUG
                 taskHandle.ContinueWith(t => Debug.Log("[KWT] Completed Characterization"));
+                Task.WhenAll(taskHandle, maxAoATaskHandle, aeroPeakTaskHandle).ContinueWith(_ => Debug.Log("[KWT] Completed AoA and Peak Characterization."));
 #endif
             }
         }
@@ -255,6 +261,72 @@ namespace KerbalWindTunnel.VesselCache
             AoAMax = FloatCurveExtensions.ComputeFloatCurve(machKeys, GetAoAMax, machStep);
         }
 
+        private void CharacterizePeaks(Task _)
+        {
+            // Since L = f(M) * f(AoA) * q and D = f(M, AoA) * q * f(V * rho), we have to assume f(V * rho) ~= 1 (per Physics.cfg).
+            // Then the peaks of sqrt(L^2 + D^2) becomes only a function of M.
+            // This lets us precompute the AoA for maximum and minimum force for a given Mach.
+            SortedSet<float> machKeys = new SortedSet<float>();
+            foreach (var (liftMachCurve, _) in surfaceLift)
+                machKeys.UnionWith(liftMachCurve.ExtractTimes());
+            foreach (var (liftMachCurve, _) in bodyLift)
+                machKeys.UnionWith(liftMachCurve.ExtractTimes());
+            foreach (var (dragMachCurve, _) in surfaceDragP)
+                machKeys.UnionWith(dragMachCurve.ExtractTimes());
+            // surfaceDragI will have the same mach keys as surfaceLift
+            machKeys.UnionWith(bodyDrag.xKeys);
+
+            if (partCollections.Count > 0)
+            {
+                SimulatedVessel.FindDragMachs();
+                machKeys.UnionWith(SimulatedVessel.DragMachs);
+            }
+
+            /*float GetCoefMag(float mach, float aoa)
+            {
+                float lift = 0, drag;
+                if (bodyDrag.xKeys.Contains(mach) && bodyDrag.yKeys.Contains(aoa))
+                    drag = bodyDrag.values[bodyDrag.xKeys.IndexOf(mach), bodyDrag.yKeys.IndexOf(aoa)].value;
+                else
+                    drag = bodyDrag.Evaluate(mach, aoa);
+
+                foreach (var (machCurve, dragCurve) in surfaceDragI)
+                    drag += machCurve.EvaluateThreadSafe(mach) * dragCurve.EvaluateThreadSafe(aoa);
+                foreach (var (machCurve, dragCurve) in surfaceDragP)
+                    drag += machCurve.EvaluateThreadSafe(mach) * dragCurve.EvaluateThreadSafe(aoa);
+
+                foreach (var (machCurve, liftCurve) in surfaceLift)
+                    lift += machCurve.EvaluateThreadSafe(mach) * liftCurve.EvaluateThreadSafe(aoa);
+                foreach (var (machCurve, liftCurve) in bodyLift)
+                    lift += machCurve.EvaluateThreadSafe(mach) * liftCurve.EvaluateThreadSafe(aoa);
+
+                return lift * lift + drag * drag;
+            }*/
+
+            CelestialBody body = WindTunnelWindow.Instance.CelestialBody;
+
+            List<float> testAoAs = new List<float>();
+            for (int i = -180; i <= 180; i += 5)
+            {
+                testAoAs.Add(Mathf.Deg2Rad * i);
+            }
+
+            Dictionary<float, float> keys = new Dictionary<float, float>();
+            foreach (float mach in machKeys)
+            {
+                Conditions conditions = Conditions.ConditionsByMach(body, mach, 0, true);
+                keys.Add(mach, Extensions.Optimization.PeakFinding.StepMinimize(a => (float)GlidingObjectiveFunc(conditions, 0)(a), 0, -10 * Mathf.Deg2Rad, out float _, 2));
+            }
+            AeroMin = new FloatCurve(machKeys.Select(m => new Keyframe(m, keys[m])).ToArray());
+            keys.Clear();
+            foreach (float mach in machKeys)
+            {
+                Conditions conditions = Conditions.ConditionsByMach(body, mach, 0, true);
+                keys.Add(mach, Extensions.Optimization.PeakFinding.StepMaximize(a => (float)GlidingObjectiveFunc(conditions, 0)(a), 0, 10 * Mathf.Deg2Rad, out float _, 2));
+            }
+            AeroMax = new FloatCurve(machKeys.Select(m => new Keyframe(m, keys[m])).ToArray());
+        }
+
         public void Dispose()
         {
             foreach (CharacterizedPart part in parts)
@@ -269,9 +341,31 @@ namespace KerbalWindTunnel.VesselCache
                 collection.Release();
         }
 
+        public override (float AoAMinForce, float AoAMaxForce) GetApproxAeroPeaks(Conditions conditions)
+        {
+            if (aeroPeakTaskHandle == null)
+                Characterize();
+            aeroPeakTaskHandle.Wait(new TimeSpan(0, 1, 0));
+
+            return (AeroMin.EvaluateThreadSafe(conditions.mach), AeroMax.EvaluateThreadSafe(conditions.mach));
+        }
+
         public override Vector3 GetAeroForce(Conditions conditions, float AoA, float pitchInput = 0)
-            => ToVesselFrame(-GetDragForceMagnitude(conditions, AoA, pitchInput) * Vector3.forward, AoA) +
-            GetLiftForce(conditions, AoA, pitchInput);
+        {
+            s_getAeroMarker.Begin();
+            float magnitude = EvaluateDragCurve(conditions, AoA, pitchInput);
+            Vector3 result = -magnitude * Vector3.forward;
+
+            foreach (PartCollection collection in partCollections)
+                lock (collection)
+                    result += collection.GetAeroForce(InflowVect(AoA) * conditions.speed, conditions, pitchInput, out _, Vector3.zero);
+
+            magnitude = EvaluateLiftCurve(conditions, AoA, pitchInput);
+            result += magnitude * Vector3.up;
+
+            s_getAeroMarker.End();
+            return ToVesselFrame(result, AoA);
+        }
 
         public float EvaluateDragCurve(Conditions conditions, float AoA, float pitchInput)
         {

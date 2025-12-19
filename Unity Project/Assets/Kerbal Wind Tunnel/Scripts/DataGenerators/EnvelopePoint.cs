@@ -27,6 +27,11 @@ namespace KerbalWindTunnel.DataGenerators
 
         public readonly float fuelBurnRate;
 
+        public readonly float AoA_gliding;
+        public readonly float LDRatioGliding;
+        public readonly float glideAngle;
+        public readonly float glideResidual;
+
         public readonly float altitude;
         public readonly float speed;
         public readonly float mach;
@@ -45,7 +50,7 @@ namespace KerbalWindTunnel.DataGenerators
         public float Coefficient(float force) => force * invWingArea * invDynamicPressure;
         public float Specific(float value) => value * invMass * WindTunnelWindow.invGAccel;
 
-        public EnvelopePoint(AeroPredictor vessel, CelestialBody body, float altitude, float speed, float AoA_guess = float.NaN, float maxA_guess = float.NaN, float pitchI_guess = float.NaN)
+        public EnvelopePoint(AeroPredictor vessel, CelestialBody body, float altitude, float speed, float AoA_guess = float.NaN, float maxA_guess = float.NaN, float pitchI_guess = float.NaN, bool forceGlideCalc = false)
         {
             s_ctorMarker.Begin();
             this.altitude = altitude;
@@ -100,6 +105,20 @@ namespace KerbalWindTunnel.DataGenerators
             /*staticMargin = vessel.GetStaticMargin(conditions, AoA_level, pitchInput, dLift: dLift, baselineTorque: torque.x);
             dTorque = Coefficient(staticMargin * vessel.MAC * dLift);*/
             //GetStabilityValues(vessel, conditions, AoA_level, out stabilityRange);
+
+            if (WindTunnelSettings.EnableGlidingCalcs || forceGlideCalc)
+            {
+                weight = vessel.Mass * (gravParameter / (r * r));
+                keyAoAs = vessel.SolveGlidingFlight(conditions, weight, null, new KeyAoAData() { glidingFlight = AoA_level });
+                AoA_gliding = keyAoAs.glidingFlight;
+                glideResidual = keyAoAs.glidingFlightResidual;
+                aeroforce = AeroPredictor.ToFlightFrame(force, AoA_gliding);
+                float glidingDrag = -aeroforce.z;
+                float glidingLift = aeroforce.y;
+                LDRatioGliding = Math.Abs(glidingLift / glidingDrag);
+                glideAngle = Mathf.Atan2(glidingDrag, glidingLift);
+            }
+
             s_ctorMarker.End();
         }
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using Smooth.Pools;
 using KerbalWindTunnel.Extensions;
@@ -38,9 +39,13 @@ namespace KerbalWindTunnel.VesselCache
         public float relativeWingArea = 0;
         public int stage = 0;
         
-        public FloatCurve DragCurvePseudoReynolds;
-        public FloatCurve maxAoA = null;
-        public static SortedSet<float> AoAMachs = null;
+        private FloatCurve DragCurvePseudoReynolds;
+        public FloatCurve AoAMax { get; private set; } = null;
+        public static SortedSet<float> LiftMachs { get; private set; } = null;
+        public static SortedSet<float> DragMachs { get; private set; } = null;
+        private System.Threading.Tasks.Task aeroPeakTaskHandle = null;
+        public FloatCurve AeroMin { get; private set; } = null;
+        public FloatCurve AeroMax { get; private set; } = null;
 
         public override AeroPredictor GetThreadSafeObject() => BorrowClone(this);
 
@@ -49,6 +54,12 @@ namespace KerbalWindTunnel.VesselCache
         public override bool ThrustIsConstantWithAoA => partCollection.partCollections.Count == 0;
 
         public override float Area => relativeWingArea;
+
+        public override (float AoAMinForce, float AoAMaxForce) GetApproxAeroPeaks(Conditions conditions)
+        {
+            aeroPeakTaskHandle.Wait();
+            return (AeroMin.EvaluateThreadSafe(conditions.mach), AeroMax.EvaluateThreadSafe(conditions.mach));
+        }
 
         public Vector3 GetAeroForce(Conditions conditions, float AoA, float pitchInput, out Vector3 torque, Vector3 torquePoint)
         {
@@ -122,7 +133,7 @@ namespace KerbalWindTunnel.VesselCache
         {
             obj.partCollection.Release();
             obj.partCollection = null;
-            obj.maxAoA = null;
+            obj.AoAMax = null;
         }
 
         public static SimulatedVessel Borrow(IShipconstruct v)
@@ -235,6 +246,8 @@ namespace KerbalWindTunnel.VesselCache
                 MAC = 1;
             MAC = relativeWingArea / MAC;
 
+            aeroPeakTaskHandle = System.Threading.Tasks.Task.Run(CharacterizePeaks);
+
             //if (lgWarning)
                 //ScreenMessages.PostScreenMessage("#autoLOC_KWT210", 5, ScreenMessageStyle.UPPER_CENTER);  // "Landing gear deployed, results may not be accurate."
         }
@@ -250,11 +263,16 @@ namespace KerbalWindTunnel.VesselCache
             relativeWingArea = vessel.relativeWingArea;
             stage = vessel.stage;
             count = vessel.count;
-            maxAoA = vessel.maxAoA?.Clone();
+            AoAMax = vessel.AoAMax?.Clone();
+            aeroPeakTaskHandle = vessel.aeroPeakTaskHandle;
+            vessel.aeroPeakTaskHandle.Wait(new TimeSpan(0, 1, 0));
+            AeroMax = vessel.AeroMax.Clone();
+            AeroMin = vessel.AeroMin.Clone();
 
             partCollection = PartCollection.BorrowClone(this, vessel);
         }
 
+        // TODO: Make this automatic in the background on borrow or initialization.
         public void InitMaxAoA()
         {
             // If there are rotating parts, this won't ever come in handy so it's not worth the time.
@@ -266,7 +284,7 @@ namespace KerbalWindTunnel.VesselCache
 #if ENABLE_PROFILER
             UnityEngine.Profiling.Profiler.BeginSample("SimulatedVessel.InitMaxAoA");
 #endif
-            FindAoAMachs();
+            FindLiftMachs();
 
             CelestialBody body = WindTunnelWindow.Instance.CelestialBody;
 
@@ -276,7 +294,7 @@ namespace KerbalWindTunnel.VesselCache
                 return this.FindMaxAoA(conditions, out float lift, 30 * Mathf.Deg2Rad);
             }
 
-            maxAoA = FloatCurveExtensions.ComputeFloatCurve(AoAMachs, GetAoAMax, machStep);
+            AoAMax = FloatCurveExtensions.ComputeFloatCurve(LiftMachs, GetAoAMax, machStep);
 
 #if ENABLE_PROFILER
             UnityEngine.Profiling.Profiler.EndSample();
@@ -284,20 +302,68 @@ namespace KerbalWindTunnel.VesselCache
             DirectAoAInitialized = true;
         }
 
-        private void FindAoAMachs()
+        private static void FindLiftMachs()
         {
-            if (AoAMachs != null)
-                return;
+            lock (LiftMachs)
+            {
+                if (LiftMachs != null)
+                    return;
 
-            AoAMachs = new SortedSet<float>();
-            foreach (var curve in PhysicsGlobals.LiftingSurfaceCurves.Values)
-                AoAMachs.UnionWith(curve.liftMachCurve.ExtractTimes());
+                LiftMachs = new SortedSet<float>();
+                foreach (var curve in PhysicsGlobals.LiftingSurfaceCurves.Values)
+                    LiftMachs.UnionWith(curve.liftMachCurve.ExtractTimes());
+            }
+        }
+        internal static void FindDragMachs()
+        {
+            lock (DragMachs)
+            {
+                if (DragMachs != null)
+                    return;
+
+                DragMachs = new SortedSet<float>();
+                foreach (var curve in PhysicsGlobals.LiftingSurfaceCurves.Values)
+                    DragMachs.UnionWith(curve.dragMachCurve.ExtractTimes());
+                DragMachs.UnionWith(PhysicsGlobals.DragCurveMultiplier.ExtractTimes());
+            }
         }
 
         public float GetAoAMax(Conditions conditions)
             => AoAMax.EvaluateThreadSafe(conditions.mach);
 
         public bool DirectAoAInitialized { get; protected set; } = false;
+
+        private void CharacterizePeaks()
+        {
+            FindDragMachs();
+            FindLiftMachs();
+            SortedSet<float> machKeys = new SortedSet<float>();
+            machKeys.UnionWith(DragMachs);
+            machKeys.UnionWith(LiftMachs);
+
+            CelestialBody body = WindTunnelWindow.Instance.CelestialBody;
+
+            List<float> testAoAs = new List<float>();
+            for (int i = -180; i <= 180; i += 5)
+            {
+                testAoAs.Add(Mathf.Deg2Rad * i);
+            }
+
+            Dictionary<float, float> keys = new Dictionary<float, float>();
+            foreach (float mach in machKeys)
+            {
+                Conditions conditions = Conditions.ConditionsByMach(body, mach, 0, true);
+                keys.Add(mach, Extensions.Optimization.PeakFinding.StepMinimize(a => (float)GlidingObjectiveFunc(conditions, 0)(a), 0, -10 * Mathf.Deg2Rad, out float _, 2));
+            }
+            AeroMin = new FloatCurve(machKeys.Select(m => new Keyframe(m, keys[m])).ToArray());
+            keys.Clear();
+            foreach (float mach in machKeys)
+            {
+                Conditions conditions = Conditions.ConditionsByMach(body, mach, 0, true);
+                keys.Add(mach, Extensions.Optimization.PeakFinding.StepMaximize(a => (float)GlidingObjectiveFunc(conditions, 0)(a), 0, 10 * Mathf.Deg2Rad, out float _, 2));
+            }
+            AeroMax = new FloatCurve(machKeys.Select(m => new Keyframe(m, keys[m])).ToArray());
+        }
 
         protected override System.Data.DataSet WriteToDataSet()
         {
@@ -308,7 +374,7 @@ namespace KerbalWindTunnel.VesselCache
             drag.Columns.Add("AoA", typeof(float));
             lift.Columns.Add("AoA", typeof(float));
 
-            foreach (float _ in AoAMachs)
+            foreach (float _ in LiftMachs)
             {
                 drag.Columns.Add().DataType = typeof(float);
                 lift.Columns.Add().DataType = typeof(float);
@@ -316,7 +382,7 @@ namespace KerbalWindTunnel.VesselCache
             drag.Rows.Add();
             lift.Rows.Add();
             int m = 1;
-            foreach (float mach in AoAMachs)
+            foreach (float mach in LiftMachs)
             {
                 drag.Rows[0][m] = lift.Rows[0][m] = mach;
                 m++;
@@ -331,7 +397,7 @@ namespace KerbalWindTunnel.VesselCache
                 float aoa = i * Mathf.Deg2Rad;
                 dragRow[0] = liftRow[0] = aoa;
                 m = 1;
-                foreach (float mach in AoAMachs)
+                foreach (float mach in LiftMachs)
                 {
                     Conditions conditions = Conditions.ConditionsByMach(body, mach, 0, true);
                     Vector3 force = GetAeroForce(conditions, aoa);
