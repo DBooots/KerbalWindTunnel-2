@@ -77,7 +77,7 @@ namespace KerbalWindTunnel.VesselCache
             else
                 this.velocityOffset = Vector3.zero;
 
-            if (surface is ModuleControlSurface ctrl)
+            if (surface is ModuleControlSurface ctrl && (!ctrl.ignorePitch || ctrl.deploy))
                 this.deflectionLiftCoeff *= (1 - ctrl.ctrlSurfaceArea);
         }
 
