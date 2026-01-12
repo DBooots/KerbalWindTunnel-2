@@ -10,8 +10,8 @@ namespace KerbalWindTunnel
 
         public abstract float Mass { get; }
         public abstract bool ThrustIsConstantWithAoA { get; }
-        public Vector3 CoM;
-        public Vector3 CoM_dry;
+        public virtual Vector3 CoM { get; internal protected set; }
+        public virtual Vector3 CoM_dry { get; internal protected set; }
 
         public abstract float Area { get; }
         public virtual float MAC { get; protected set; }

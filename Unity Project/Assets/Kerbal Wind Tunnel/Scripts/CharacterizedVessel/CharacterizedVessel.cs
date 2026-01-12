@@ -17,6 +17,7 @@ namespace KerbalWindTunnel.VesselCache
         static readonly Unity.Profiling.ProfilerMarker s_evalLiftMarker = new Unity.Profiling.ProfilerMarker("CharacterizedVessel.EvaluateLiftCurve");
         static readonly Unity.Profiling.ProfilerMarker s_evalDragMarker = new Unity.Profiling.ProfilerMarker("CharacterizedVessel.EvaluateDragCurve");
         static readonly Unity.Profiling.ProfilerMarker s_getAeroMarker = new Unity.Profiling.ProfilerMarker("CharacterizedVessel.GetAeroForce");
+        static readonly Unity.Profiling.ProfilerMarker s_evalTorqueMarker = new Unity.Profiling.ProfilerMarker("CharacterizedVessel.EvaluateTorqueCurve");
 
         public readonly SimulatedVessel vessel;
 
@@ -29,6 +30,9 @@ namespace KerbalWindTunnel.VesselCache
         public override float Area => vessel.Area;
         public override float MAC => vessel.MAC;
 
+        public override Vector3 CoM => vessel.CoM;
+        public override Vector3 CoM_dry => vessel.CoM_dry;
+
         public bool DirectAoAInitialized => maxAoATaskHandle?.IsCompleted ?? false;
 
         public const int tolerance = 5;
@@ -36,11 +40,29 @@ namespace KerbalWindTunnel.VesselCache
 
         internal readonly List<(FloatCurve machCurve, FloatCurve liftCurve)> surfaceLift = new List<(FloatCurve machCurve, FloatCurve liftCurve)>();
         internal readonly List<(FloatCurve machCurve, FloatCurve liftCurve)> surfaceDragI = new List<(FloatCurve machCurve, FloatCurve liftCurve)>();
-        internal readonly List<(FloatCurve machCurve, FloatCurve liftCurve)> surfaceDragP = new List<(FloatCurve machCurve, FloatCurve liftCurve)>();
+        internal readonly List<(FloatCurve machCurve, FloatCurve dragCurve)> surfaceDragP = new List<(FloatCurve machCurve, FloatCurve dragCurve)>();
+
         internal readonly List<(FloatCurve machCurve, FloatCurve liftCurve)> bodyLift = new List<(FloatCurve machCurve, FloatCurve liftCurve)>();
         internal FloatCurve2 bodyDrag;
+
+        internal readonly List<(FloatCurve machCurve, FloatCurve liftCurve)> ctrlDeltaLift = new List<(FloatCurve machCurve, FloatCurve liftCurve)>();
+        internal readonly List<(FloatCurve machCurve, FloatCurve liftCurve)> ctrlDeltaDragI_Pos = new List<(FloatCurve machCurve, FloatCurve liftCurve)>();
+        internal readonly List<(FloatCurve machCurve, FloatCurve liftCurve)> ctrlDeltaDragI_Neg = new List<(FloatCurve machCurve, FloatCurve liftCurve)>();
+        internal readonly List<(FloatCurve machCurve, FloatCurve dragCurve)> ctrlDeltaDragP_Pos = new List<(FloatCurve machCurve, FloatCurve dragCurve)>();
+        internal readonly List<(FloatCurve machCurve, FloatCurve dragCurve)> ctrlDeltaDragP_Neg = new List<(FloatCurve machCurve, FloatCurve dragCurve)>();
         internal FloatCurve2 ctrlDeltaDragPos;
         internal FloatCurve2 ctrlDeltaDragNeg;
+
+        internal readonly List<(FloatCurve machCurve, FloatCurve torqueCurve)> surfaceTorqueL = new List<(FloatCurve machCurve, FloatCurve torqueCurve)>();
+        internal readonly List<(FloatCurve machCurve, FloatCurve torqueCurve)> surfaceTorqueD = new List<(FloatCurve machCurve, FloatCurve torqueCurve)>();
+        internal readonly List<(FloatCurve machCurve, FloatCurve torqueCurve)> bodyTorqueL = new List<(FloatCurve machCurve, FloatCurve torqueCurve)>();
+        internal FloatCurve2 bodyTorqueD;
+
+        internal readonly List<(FloatCurve machCurve, FloatCurve torqueCurve)> ctrlDeltaTorqueL = new List<(FloatCurve machCurve, FloatCurve torqueCurve)>();
+        internal readonly List<(FloatCurve machCurve, FloatCurve torqueCurve)> ctrlDeltaTorqueD_Pos = new List<(FloatCurve machCurve, FloatCurve torqueCurve)>();
+        internal readonly List<(FloatCurve machCurve, FloatCurve torqueCurve)> ctrlDeltaTorqueD_Neg = new List<(FloatCurve machCurve, FloatCurve torqueCurve)>();
+        internal FloatCurve2 ctrlDeltaBodyTorquePos;
+        internal FloatCurve2 ctrlDeltaBodyTorqueNeg;
 
         public FloatCurve AoAMax { get; private set; }
         public FloatCurve AeroMin { get; private set; } = null;
@@ -201,39 +223,66 @@ namespace KerbalWindTunnel.VesselCache
         private void CombineParts(Task _)
         {
             // Offloading one set of superposition work.
-            Task<FloatCurve2> dragSuperposition = Task.Run(() => FloatCurve2.Superposition(parts.Select(p => p.DragCoefficientCurve)));
+            Task<FloatCurve2> dragSuperposition = CombineCurves(parts.Select(p => p.DragCoefficientCurve));
+            Task<FloatCurve2> torqueSuperposition = CombineCurves(parts.Select(p => p.TorqueCurve_Drag));
 
-            foreach (var bodyGroup in parts.Where(p => FloatCurveIsValid(p.LiftMachScalarCurve) && FloatCurveIsValid(p.LiftCoefficientCurve)).GroupBy(p => p.LiftMachScalarCurve, FloatCurveComparer.Instance))
-                bodyLift.Add((bodyGroup.Key.Clone(), FloatCurveExtensions.Superposition(bodyGroup.Select(s => s.LiftCoefficientCurve))));
-
-            foreach (var (_, liftCurve) in bodyLift)
-                liftCurve.Simplify();
+            CombineCurveGroup(bodyLift, parts, p => p.LiftMachScalarCurve, p => p.LiftCoefficientCurve);
+            CombineCurveGroup(bodyTorqueL, parts, p => p.LiftMachScalarCurve, p => p.TorqueCurve_Lift);
 
             bodyDrag = dragSuperposition.Result;
-            bodyDrag = bodyDrag.Simplify(1);
+            bodyTorqueD = torqueSuperposition.Result;
+        }
+        private static Task<FloatCurve2> CombineCurves(IEnumerable<FloatCurve2> curves)
+            => Task.Run(() => FloatCurve2.Superposition(curves).Simplify(1));
+        private static void CombineCurveGroup<T>(List<(FloatCurve machCurve, FloatCurve forceCurve)> destination, IEnumerable<T> collection, Func<T, FloatCurve> groupSelector, Func<T, FloatCurve> superpositionSelector)
+        {
+            bool SelectorsAreValid(T obj)
+                => FloatCurveIsValid(groupSelector(obj)) && FloatCurveIsValid(superpositionSelector(obj));
+            foreach (var surfGroup in collection.Where(SelectorsAreValid).GroupBy(groupSelector, FloatCurveComparer.Instance))
+            {
+                FloatCurve groupCurve = FloatCurveExtensions.Superposition(surfGroup.Select(superpositionSelector));
+                groupCurve.Simplify();
+                destination.Add((surfGroup.Key.Clone(), groupCurve));
+            }
         }
         private void CombineSurfaces(Task _)
         {
-            Task<FloatCurve2> posSuperposition = Task.Run(() => FloatCurve2.Superposition(controls.Select(c => c.DeltaDragCoefficientCurve_Pos)));
-            Task<FloatCurve2> negSuperposition = Task.Run(() => FloatCurve2.Superposition(controls.Select(c => c.DeltaDragCoefficientCurve_Neg)));
+            Task<FloatCurve2> posSuperposition = CombineCurves(controls.Select(c => c.DeltaDragCoefficientCurve_Pos));
+            Task<FloatCurve2> negSuperposition = CombineCurves(controls.Select(c => c.DeltaDragCoefficientCurve_Neg));
+            Task<FloatCurve2> posTorqueSuperposition = CombineCurves(controls.Select(c => c.DeltaTorqueCurve_Pos));
+            Task<FloatCurve2> negTorqueSuperposition = CombineCurves(controls.Select(c => c.DeltaTorqueCurve_Neg));
 
             IEnumerable <CharacterizedLiftingSurface> allSurfaces = surfaces.Concat(controls);
-            foreach (var surfGroup in allSurfaces.Where(s => FloatCurveIsValid(s.LiftMachScalarCurve) && FloatCurveIsValid(s.LiftCoefficientCurve)).GroupBy(s => s.LiftMachScalarCurve, FloatCurveComparer.Instance))
-                surfaceLift.Add((surfGroup.Key.Clone(), FloatCurveExtensions.Superposition(surfGroup.Select(s => s.LiftCoefficientCurve))));
-            foreach (var surfGroup in allSurfaces.Where(s => FloatCurveIsValid(s.LiftMachScalarCurve) && FloatCurveIsValid(s.DragCoefficientCurve_Induced)).GroupBy(s => s.LiftMachScalarCurve, FloatCurveComparer.Instance))
-                surfaceDragI.Add((surfGroup.Key.Clone(), FloatCurveExtensions.Superposition(surfGroup.Select(s => s.DragCoefficientCurve_Induced))));
-            foreach (var surfGroup in allSurfaces.Where(s => FloatCurveIsValid(s.DragMachScalarCurve) && FloatCurveIsValid(s.DragCoefficientCurve_Parasite)).GroupBy(s => s.DragMachScalarCurve, FloatCurveComparer.Instance))
-                surfaceDragP.Add((surfGroup.Key.Clone(), FloatCurveExtensions.Superposition(surfGroup.Select(s => s.DragCoefficientCurve_Parasite))));
+#if OUTSIDE_UNITY
+            static
+#endif
+            FloatCurve LiftMachSelector(CharacterizedLiftingSurface surface) => surface.LiftMachScalarCurve;
+#if OUTSIDE_UNITY
+            static
+#endif
+            FloatCurve DragMachSelector(CharacterizedLiftingSurface surface) => surface.DragMachScalarCurve;
 
-            foreach (var (_, liftCurve) in surfaceLift)
-                liftCurve.Simplify();
-            foreach (var (_, liftCurve) in surfaceDragI)
-                liftCurve.Simplify();
-            foreach (var (_, liftCurve) in surfaceDragP)
-                liftCurve.Simplify();
+            CombineCurveGroup(surfaceLift, allSurfaces, LiftMachSelector, s => s.LiftCoefficientCurve);
+            CombineCurveGroup(surfaceDragI, allSurfaces, LiftMachSelector, s => s.DragCoefficientCurve_Induced);
+            CombineCurveGroup(surfaceDragP, allSurfaces, DragMachSelector, s => s.DragCoefficientCurve_Parasite);
+
+            CombineCurveGroup(surfaceTorqueL, allSurfaces, LiftMachSelector, s => s.TorqueCurve_Lift);
+            CombineCurveGroup(surfaceTorqueD, allSurfaces, DragMachSelector, s => s.TorqueCurve_Drag);
+
+            CombineCurveGroup(ctrlDeltaLift, controls, LiftMachSelector, c => c.DeltaLiftCoefficientCurve);
+            CombineCurveGroup(ctrlDeltaDragI_Pos, controls, LiftMachSelector, c => c.DeltaDragCoefficientCurve_Induced_Pos);
+            CombineCurveGroup(ctrlDeltaDragI_Neg, controls, LiftMachSelector, c => c.DeltaDragCoefficientCurve_Induced_Neg);
+            CombineCurveGroup(ctrlDeltaDragP_Pos, controls, DragMachSelector, c => c.DeltaDragCoefficientCurve_Parasite_Pos);
+            CombineCurveGroup(ctrlDeltaDragP_Neg, controls, DragMachSelector, c => c.DeltaDragCoefficientCurve_Parasite_Neg);
+
+            CombineCurveGroup(ctrlDeltaTorqueL, controls, LiftMachSelector, c => c.DeltaTorqueCurve_Lift);
+            CombineCurveGroup(ctrlDeltaTorqueD_Pos, controls, DragMachSelector, c => c.DeltaTorqueCurve_Drag_Pos);
+            CombineCurveGroup(ctrlDeltaTorqueD_Neg, controls, DragMachSelector, c => c.DeltaTorqueCurve_Drag_Neg);
 
             ctrlDeltaDragPos = posSuperposition.Result;
             ctrlDeltaDragNeg = negSuperposition.Result;
+            ctrlDeltaBodyTorquePos = posTorqueSuperposition.Result;
+            ctrlDeltaBodyTorqueNeg = negTorqueSuperposition.Result;
         }
 
         private void CharacterizeMaxAoA(Task _)
@@ -369,6 +418,8 @@ namespace KerbalWindTunnel.VesselCache
             return result;
         }
 
+        private static float EvaluateCurveSet(List<(FloatCurve machScalar, FloatCurve coefficient)> curveSet, float mach, float AoA)
+            => curveSet.Sum(g => g.machScalar.EvaluateThreadSafe(mach) * g.coefficient.EvaluateThreadSafe(AoA));
         public float EvaluateDragCurve(Conditions conditions, float AoA, float pitchInput)
         {
             WaitUntilCharacterized();
@@ -376,32 +427,25 @@ namespace KerbalWindTunnel.VesselCache
             s_evalDragMarker.Begin();
             float magnitude = 0;
 
-            foreach (var (liftMachCurve, liftCurve) in surfaceDragI)
-            {
-                float groupMagnitude;
-                groupMagnitude = liftCurve.EvaluateThreadSafe(AoA);
-                groupMagnitude *= liftMachCurve.EvaluateThreadSafe(conditions.mach);
-                magnitude += groupMagnitude;
-            }
+            magnitude += EvaluateCurveSet(surfaceDragI, conditions.mach, AoA);
             // These lists could be combined. But separate is easier for debugging.
-            foreach (var (dragMachCurve, dragCurve) in surfaceDragP)
-            {
-                float groupMagnitude;
-                groupMagnitude = dragCurve.EvaluateThreadSafe(AoA);
-                groupMagnitude *= dragMachCurve.EvaluateThreadSafe(conditions.mach);
-                magnitude += groupMagnitude;
-            }
+            magnitude += EvaluateCurveSet(surfaceDragP, conditions.mach, AoA);
 
             float bodyDrag = this.bodyDrag.Evaluate(conditions.mach, AoA);
 
             if (pitchInput < 0)
             {
-                bodyDrag += ctrlDeltaDragNeg.Evaluate(conditions.mach, AoA) * -pitchInput;
+                magnitude += EvaluateCurveSet(ctrlDeltaDragI_Neg, conditions.mach, AoA) * pitchInput;
+                magnitude += EvaluateCurveSet(ctrlDeltaDragP_Neg, conditions.mach, AoA) * pitchInput;
+                bodyDrag += ctrlDeltaDragNeg.Evaluate(conditions.mach, AoA) * pitchInput;
             }
             else if (pitchInput > 0)
             {
+                magnitude += EvaluateCurveSet(ctrlDeltaDragI_Pos, conditions.mach, AoA) * pitchInput;
+                magnitude += EvaluateCurveSet(ctrlDeltaDragP_Pos, conditions.mach, AoA) * pitchInput;
                 bodyDrag += ctrlDeltaDragPos.Evaluate(conditions.mach, AoA) * pitchInput;
             }
+
             magnitude += bodyDrag * conditions.pseudoReDragMult;
 
             s_evalDragMarker.End();
@@ -428,21 +472,14 @@ namespace KerbalWindTunnel.VesselCache
             s_evalLiftMarker.Begin();
             float magnitude = 0;
 
-            foreach (var (liftMachCurve, liftCurve) in surfaceLift)
-            {
-                float groupMagnitude;
-                groupMagnitude = liftCurve.EvaluateThreadSafe(AoA);
-                groupMagnitude *= liftMachCurve.EvaluateThreadSafe(conditions.mach);
-                magnitude += groupMagnitude;
-            }
-            foreach (var (machCurve, liftCurve) in bodyLift)
-            {
-                float groupMagnitude;
-                groupMagnitude = liftCurve.EvaluateThreadSafe(AoA);
-                groupMagnitude *= machCurve.EvaluateThreadSafe(conditions.mach);
-                magnitude += groupMagnitude;
-            }
+            magnitude += EvaluateCurveSet(surfaceLift, conditions.mach, AoA);
+            magnitude += EvaluateCurveSet(bodyLift, conditions.mach, AoA);
 
+            if (pitchInput != 0)
+            {
+                magnitude += EvaluateCurveSet(ctrlDeltaLift, conditions.mach, AoA) * pitchInput;
+            }
+            
             s_evalLiftMarker.End();
             return magnitude * conditions.Q;
         }
@@ -474,8 +511,54 @@ namespace KerbalWindTunnel.VesselCache
             return result;
         }
 
+        public float EvaluateTorqueCurve(Conditions conditions, float AoA, float pitchInput = 0)
+        {
+            WaitUntilCharacterized();
+
+            s_evalTorqueMarker.Begin();
+            float magnitude = 0;
+
+            magnitude += EvaluateCurveSet(surfaceTorqueL, conditions.mach, AoA);
+            magnitude += EvaluateCurveSet(surfaceTorqueD, conditions.mach, AoA);
+            magnitude += EvaluateCurveSet(bodyTorqueL, conditions.mach, AoA);
+
+            float bodyTorque = bodyTorqueD.Evaluate(conditions.mach, AoA);
+
+            if (pitchInput < 0)
+            {
+                magnitude += EvaluateCurveSet(ctrlDeltaTorqueL, conditions.mach, AoA) * pitchInput;
+                magnitude += EvaluateCurveSet(ctrlDeltaTorqueD_Pos, conditions.mach, AoA) * pitchInput;
+                bodyTorque += ctrlDeltaBodyTorquePos.Evaluate(conditions.mach, AoA) * pitchInput;
+            }
+            else if (pitchInput > 0)
+            {
+                magnitude += EvaluateCurveSet(ctrlDeltaTorqueL, conditions.mach, AoA) * pitchInput;
+                magnitude += EvaluateCurveSet(ctrlDeltaTorqueD_Neg, conditions.mach, AoA) * pitchInput;
+                bodyTorque += ctrlDeltaBodyTorqueNeg.Evaluate(conditions.mach, AoA) * pitchInput;
+            }
+
+            magnitude += bodyTorque * conditions.pseudoReDragMult;
+
+            s_evalTorqueMarker.End();
+            return magnitude * conditions.Q;
+        }
         public override Vector3 GetAeroTorque(Conditions conditions, float AoA, float pitchInput = 0, bool dryTorque = false)
-            => vessel.GetAeroTorque(conditions, AoA, pitchInput, dryTorque);
+        {
+            Vector3 torquePoint = dryTorque ? CoM_dry : CoM;
+
+            float magnitude = EvaluateTorqueCurve(conditions, AoA, pitchInput);
+
+            magnitude += EvaluateLiftCurve(conditions, AoA, pitchInput) * torquePoint.z;
+            magnitude += -EvaluateDragCurve(conditions, AoA, pitchInput) * torquePoint.y;
+
+            Vector3 result = new Vector3(magnitude, 0, 0);
+
+            foreach (PartCollection collection in partCollections)
+                lock (collection)
+                    result += collection.GetAeroTorque(InflowVect(AoA) * conditions.speed, conditions, torquePoint, pitchInput);
+
+            return vessel.GetAeroTorque(conditions, AoA, pitchInput, dryTorque);
+        }
 
         public override Vector3 GetThrustForce(Conditions conditions, float AoA)
             => vessel.GetThrustForce(conditions, AoA);

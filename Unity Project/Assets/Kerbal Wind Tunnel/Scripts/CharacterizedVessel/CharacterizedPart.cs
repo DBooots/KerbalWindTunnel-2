@@ -10,9 +10,11 @@ namespace KerbalWindTunnel.VesselCache
     {
         public readonly SimulatedPart simulatedPart;
         public readonly Part part;
-        public FloatCurve2 DragCoefficientCurve { get; private set; }
         public FloatCurve LiftCoefficientCurve { get; private set; }
         public FloatCurve LiftMachScalarCurve { get => part?.DragCubes.BodyLiftCurve.liftMachCurve; }
+        public FloatCurve2 DragCoefficientCurve { get; private set; }
+        public FloatCurve TorqueCurve_Lift { get; private set; }
+        public FloatCurve2 TorqueCurve_Drag { get; private set; }
 
         private readonly SortedSet<(float aoa, bool continuousDerivative)> partAoAKeys = new SortedSet<(float aoa, bool continuousDerivative)>(CharacterizedVessel.FloatTupleComparer);
         private readonly SortedSet<(float mach, bool continuousDerivative)> dragMachKeys = new SortedSet<(float mach, bool continuousDerivative)>(CharacterizedVessel.FloatTupleComparer);
@@ -74,9 +76,13 @@ namespace KerbalWindTunnel.VesselCache
                     dragMachKeys.UnionWith(GetDragMachSet(simulatedPart.cubes));
 
                     DragCoefficientCurve = FloatCurve2.ComputeCurve(dragMachKeys, partAoAKeys, PartDragForce, settings);
+                    TorqueCurve_Drag = DragCoefficientCurve.ScaledBy(k => -AeroPredictor.ToFlightFrame(simulatedPart.CoP, k.timeY).y);
                 }
                 else
+                {
                     DragCoefficientCurve = null;
+                    TorqueCurve_Drag = null;
+                }
 
                 if (!simulatedPart.NoBodyLift)
                 {
@@ -97,9 +103,13 @@ namespace KerbalWindTunnel.VesselCache
                     }
 
                     LiftCoefficientCurve = FloatCurveExtensions.ComputeFloatCurve(partAoAKeys, PartLiftForce, CharacterizedVessel.toleranceF);
+                    TorqueCurve_Lift = FloatCurveExtensions.ScaledBy(LiftCoefficientCurve, k => AeroPredictor.ToFlightFrame(simulatedPart.CoL, k.time).z);
                 }
                 else
+                {
                     LiftCoefficientCurve = null;
+                    TorqueCurve_Lift = null;
+                }
             }
         }
 

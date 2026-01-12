@@ -11,11 +11,14 @@ namespace KerbalWindTunnel.VesselCache
     {
         protected SimulatedLiftingSurface simulatedLiftingSurface;
         public readonly Part part;
+        public FloatCurve LiftCoefficientCurve { get; private set; }
         public FloatCurve DragCoefficientCurve_Induced { get; private set; }
         public FloatCurve DragCoefficientCurve_Parasite { get; private set; }
-        public FloatCurve LiftCoefficientCurve { get; private set; }
         public FloatCurve LiftMachScalarCurve => simulatedLiftingSurface?.liftMachCurve;
         public FloatCurve DragMachScalarCurve => simulatedLiftingSurface?.dragMachCurve;
+        public FloatCurve TorqueCurve_Lift { get; private set; }
+        public FloatCurve TorqueCurve_Drag { get; private set; }
+
         protected readonly SortedSet<(float aoa, bool continuousDerivative)> liftAoAKeys = new SortedSet<(float aoa, bool continuousDerivative)>(CharacterizedVessel.FloatTupleComparer);
         protected readonly SortedSet<(float aoa, bool continuousDerivative)> dragAoAKeys_Induced = new SortedSet<(float aoa, bool continuousDerivative)>(CharacterizedVessel.FloatTupleComparer);
         protected readonly SortedSet<(float aoa, bool continuousDerivative)> dragAoAKeys_Parasite = new SortedSet<(float aoa, bool continuousDerivative)>(CharacterizedVessel.FloatTupleComparer);
@@ -50,21 +53,21 @@ namespace KerbalWindTunnel.VesselCache
             }
         }
 
-        protected (float machMag, float evalPt) GetSafeEvalPt(FloatCurve machScalarCurve)
+        protected static (float machMag, float evalPt) GetSafeEvalPt(FloatCurve machScalarCurve)
         {
-            float machMag = LiftMachScalarCurve.EvaluateThreadSafe(0), evalPt = 0;
+            float machMag = machScalarCurve.EvaluateThreadSafe(0), evalPt = 0;
             if (Math.Abs(machMag) < 0.001f)
             {
                 Keyframe evalKeyframe;
                 try
                 {
-                    evalKeyframe = LiftMachScalarCurve.Curve.keys.First(k => Math.Abs(k.value) > 0.001f);
+                    evalKeyframe = machScalarCurve.Curve.keys.First(k => Math.Abs(k.value) > 0.001f);
                 }
                 catch (InvalidOperationException)
                 {
                     try
                     {
-                        evalKeyframe = LiftMachScalarCurve.Curve.keys.First(k => k.value != 0);
+                        evalKeyframe = machScalarCurve.Curve.keys.First(k => k.value != 0);
                     }
                     catch (InvalidOperationException e)
                     {
@@ -191,12 +194,24 @@ namespace KerbalWindTunnel.VesselCache
 
             return AeroPredictor.GetDragForceComponent(drag, aoa);
         }
+        protected virtual void CharacterizeTorque()
+        {
+            FloatCurve[] liftTorqueCurves =
+            {
+                FloatCurveExtensions.ScaledBy(LiftCoefficientCurve, k => AeroPredictor.ToFlightFrame(simulatedLiftingSurface.part.CoL, k.time).z),
+                FloatCurveExtensions.ScaledBy(DragCoefficientCurve_Induced, k => -AeroPredictor.ToFlightFrame(simulatedLiftingSurface.part.CoL, k.time).y)
+            };
+            TorqueCurve_Lift = FloatCurveExtensions.Superposition(liftTorqueCurves);
+            TorqueCurve_Drag = FloatCurveExtensions.ScaledBy(DragCoefficientCurve_Parasite, k => -AeroPredictor.ToFlightFrame(simulatedLiftingSurface.part.CoP, k.time).y);
+        }
 
         protected virtual void Null()
         {
             LiftCoefficientCurve = null;
             DragCoefficientCurve_Induced = null;
             DragCoefficientCurve_Parasite = null;
+            TorqueCurve_Lift = null;
+            TorqueCurve_Drag = null;
         }
 
         public void Characterize(Task _) => Characterize();
@@ -219,6 +234,9 @@ namespace KerbalWindTunnel.VesselCache
 
                 // Drag Curve
                 CharacterizeDrag();
+
+                // Torque Curve
+                CharacterizeTorque();
             }
         }
 
