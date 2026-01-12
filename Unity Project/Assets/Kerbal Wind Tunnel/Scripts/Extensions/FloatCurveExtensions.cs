@@ -105,6 +105,7 @@ namespace KerbalWindTunnel.Extensions
         {
             lock (curve)
                 return curve.Evaluate(time);
+#pragma warning disable CS0162 // Unreachable code detected
             if (time <= curve.minTime)
                 return curve.Curve.keys[0].value;
             if (time >= curve.maxTime)
@@ -114,6 +115,7 @@ namespace KerbalWindTunnel.Extensions
             Keyframe keyframe0 = curve.Curve.keys[index0];
             Keyframe keyframe1 = curve.Curve.keys[index0 + 1];
             return EvaluateFloatCurveKeyframe(time, keyframe0, keyframe1);
+#pragma warning restore CS0162 // Unreachable code detected
         }
         private static float EvaluateFloatCurveKeyframe(float time, Keyframe keyframe0, Keyframe keyframe1)
             => EvaluateBicubic(time, keyframe0.time, keyframe1.time, keyframe0.value, keyframe0.outTangent, keyframe1.inTangent, keyframe1.value);
@@ -135,6 +137,7 @@ namespace KerbalWindTunnel.Extensions
 
             return a * value0 + b * m0 + c * m1 + d * value1;
         }
+
         public static FloatCurve Superposition(IEnumerable<FloatCurve> curves)
         {
             SortedSet<float> keys_ = new SortedSet<float>();
@@ -191,6 +194,158 @@ namespace KerbalWindTunnel.Extensions
                 result.Add(sortedUniqueKeys[i], values[i], inTangents[i], outTangents[i]);
             return result;
         }
+
+        public static FloatCurve Subtract(FloatCurve minuend, FloatCurve subtrahend)
+            => Subtract(minuend, Enumerable.Repeat(subtrahend, 1));
+        public static FloatCurve Subtract(FloatCurve minuend, IEnumerable<FloatCurve> subtrahends)
+        {
+            SortedSet<float> keys_ = new SortedSet<float>(minuend.ExtractTimes());
+            foreach (FloatCurve curve in subtrahends)
+            {
+                if (curve == null)
+                    continue;
+                keys_.UnionWith(curve.ExtractTimes());
+            }
+            return Subtract(minuend, subtrahends, keys_.ToArray());
+        }
+        public static FloatCurve Subtract(FloatCurve minuend, IEnumerable<FloatCurve> subtrahends, IEnumerable<float> keys)
+        {
+            float[] keys_ = keys.Distinct().ToArray();
+            Array.Sort(keys_);
+            return Subtract(minuend, subtrahends, keys_);
+        }
+
+        public static FloatCurve Subtract(FloatCurve minuend, IEnumerable<FloatCurve> subtrahends, IList<float> sortedUniqueKeys)
+        {
+            if (minuend == null)
+                throw new ArgumentNullException(nameof(minuend));
+
+            FloatCurve result = new FloatCurve();
+            int length = sortedUniqueKeys.Count;
+            float[] values = new float[length];
+            float[] inTangents = new float[length];
+            float[] outTangents = new float[length];
+            
+            bool negate = false;
+
+            foreach (FloatCurve curve in Enumerable.Repeat(minuend, 1).Concat(subtrahends))
+            {
+                int multiplier = negate ? -1 : 1;
+                if (curve == null)
+                    continue;
+                SortedSet<float> curveKeys = new SortedSet<float>(curve.ExtractTimes());
+
+                for (int i = length - 1; i >= 0; i--)
+                {
+                    float f = sortedUniqueKeys[i];
+                    // This curve has this keyframe
+                    if (curveKeys.Contains(f))
+                    {
+                        Keyframe keyframe = curve.Curve.keys.First(k => k.time.Equals(f));
+                        inTangents[i] += keyframe.inTangent * multiplier;
+                        outTangents[i] += keyframe.outTangent * multiplier;
+                        values[i] += keyframe.value * multiplier;
+                    }
+                    else // Evaluate the curve and use it
+                    {
+                        float derivative = curve.EvaluateDerivative(f) * multiplier;
+                        inTangents[i] += derivative;
+                        outTangents[i] += derivative;
+                        values[i] += curve.EvaluateThreadSafe(f) * multiplier;
+                    }
+                }
+                negate = true;
+            }
+            for (int i = 0; i < length; i++)
+                result.Add(sortedUniqueKeys[i], values[i], inTangents[i], outTangents[i]);
+            return result;
+        }
+
+        public static void Scale(this FloatCurve curve, float scalar)
+        {
+            Keyframe[] keys = curve.Curve.keys;
+            for (int i = keys.Length - 1; i >= 0; --i)
+            {
+                ref Keyframe key = ref keys[i];
+                key.value *= scalar;
+                key.inTangent *= scalar;
+                key.outTangent *= scalar;
+            }
+            curve.Curve.keys = keys;
+        }
+        public static void Scale(this FloatCurve curve, Func<Keyframe, float> scalarFunc)
+        {
+            Keyframe[] keys = curve.Curve.keys;
+            for (int i = keys.Length - 1; i >= 0; --i)
+            {
+                ref Keyframe key = ref keys[i];
+                float scalar = scalarFunc(key);
+                key.value *= scalar;
+                key.inTangent *= scalar;
+                key.outTangent *= scalar;
+            }
+            curve.Curve.keys = keys;
+        }
+        public static void ScaleTimes(this FloatCurve curve, float scalar)
+        {
+            Keyframe[] keys = curve.Curve.keys;
+            float invScalar = 1 / scalar;
+            for (int i = keys.Length - 1; i >= 0; --i)
+            {
+                ref Keyframe key = ref keys[i];
+                key.time *= scalar;
+                key.inTangent *= invScalar;
+                key.outTangent *= invScalar;
+            }
+            curve.Curve.keys = keys;
+        }
+        public static void ScaleTimes(this FloatCurve curve, Func<Keyframe, float> scalarFunc)
+        {
+            Keyframe[] keys = curve.Curve.keys;
+            for (int i = keys.Length - 1; i >= 0; --i)
+            {
+                ref Keyframe key = ref keys[i];
+                float scalar = scalarFunc(key);
+                float invScalar = 1 / scalar;
+                key.time *= scalar;
+                key.inTangent *= invScalar;
+                key.outTangent *= invScalar;
+            }
+            curve.Curve.keys = keys;
+        }
+        public static FloatCurve ScaledBy(FloatCurve curve, float scalar)
+        {
+            if (curve == null)
+                return null;
+            FloatCurve result = curve.Clone();
+            result.Scale(scalar);
+            return result;
+        }
+        public static FloatCurve ScaledBy(FloatCurve curve, Func<Keyframe, float> scalarFunc)
+        {
+            if (curve == null)
+                return null;
+            FloatCurve result = curve.Clone();
+            result.Scale(scalarFunc);
+            return result;
+        }
+        public static FloatCurve TimesScaledBy(FloatCurve curve, float scalar)
+        {
+            if (curve == null)
+                return null;
+            FloatCurve result = curve.Clone();
+            result.ScaleTimes(scalar);
+            return result;
+        }
+        public static FloatCurve TimeScaledBy(FloatCurve curve, Func<Keyframe, float> scalarFunc)
+        {
+            if (curve == null)
+                return null;
+            FloatCurve result = curve.Clone();
+            result.ScaleTimes(scalarFunc);
+            return result;
+        }
+
         public delegate bool KeyframeMargins(float valueError, float valueAbsoluteError, float tangentDifference, float tangentError);
         internal static bool DefaultMargins(float valueError, float _, float tangentDifference, float tangentError)
         {

@@ -14,25 +14,6 @@ namespace KerbalWindTunnel.VesselCache
         public void WriteToJson(CharacterizedVessel vessel, string filename)
         {
             string path = GraphIO.ValidateFilePath(WindTunnel.graphPath, filename, ".json");
-#if OUTSIDE_UNITY
-            static
-#endif
-            FloatCurve ScaleFloatCurve(FloatCurve curve, float scalar)
-            {
-                return new FloatCurve(curve.Curve.keys.Select(
-                    k => new Keyframe(k.time, k.value * scalar, k.inTangent * scalar, k.outTangent * scalar)
-                    ).ToArray());
-            }
-#if OUTSIDE_UNITY
-            static
-#endif
-            FloatCurve ScaleFloatCurveTime(FloatCurve curve, float scalar)
-            {
-                float invScalar = 1 / scalar;
-                return new FloatCurve(curve.Curve.keys.Select(
-                    k => new Keyframe(k.time * scalar, k.value, k.inTangent * invScalar, k.outTangent * invScalar)
-                    ).ToArray());
-            }
             lock (stringBuilder)
             {
                 stringBuilder.Clear();
@@ -50,13 +31,13 @@ namespace KerbalWindTunnel.VesselCache
                     WriteList(liftCurveSets.Select(curveSet => curveSet.machCurve), 2, true);
                     // Write the lift coefficient curves (a List of FloatCurves)
                     WriteValue("liftCurve", 2, true);
-                    WriteList(liftCurveSets.Select(curveSet => ScaleFloatCurveTime(curveSet.liftCurve, Mathf.Rad2Deg)), 2, true);
+                    WriteList(liftCurveSets.Select(curveSet => FloatCurveExtensions.TimesScaledBy(curveSet.liftCurve, Mathf.Rad2Deg)), 2, true);
                     // Write the AoA at which max lift is obtained (a FloatCurve with respect to Mach number)
                     WriteValue("maxLiftAoA", 2, true);
-                    WriteFloatCurve(ScaleFloatCurve(GetMaxLiftAoA(vessel), Mathf.Rad2Deg), 2, true);
+                    WriteFloatCurve(FloatCurveExtensions.ScaledBy(GetMaxLiftAoA(vessel), Mathf.Rad2Deg), 2, true);
                     // Write the AoA at which max L/D is obtained (a FloatCurve with respect to Mach number (with some assumption about altitude))
                     WriteValue("maxLDAoA", 2, true);
-                    WriteFloatCurve(ScaleFloatCurve(GetMaxLDAoA(vessel), Mathf.Rad2Deg), 2, false);
+                    WriteFloatCurve(FloatCurveExtensions.ScaledBy(GetMaxLDAoA(vessel), Mathf.Rad2Deg), 2, false);
                 }
                 stringBuilder.AppendLine();
                 stringBuilder.AppendLine(indentString + "],");

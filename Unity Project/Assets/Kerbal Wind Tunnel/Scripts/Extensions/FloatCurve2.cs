@@ -715,6 +715,7 @@ namespace KerbalWindTunnel
             return new FloatCurve2(xKeys, yKeys, values, dDx_in, dDx_out, dDy_in, dDy_out, ddDx_in_Dy_in, ddDx_in_Dy_out, ddDx_out_Dy_in, ddDx_out_Dy_out);
         }
 
+        public static FloatCurve2 Subtract(FloatCurve2 minuend, FloatCurve2 subtrahend) => Subtract(minuend, Enumerable.Repeat(subtrahend, 1));
         public static FloatCurve2 Subtract(FloatCurve2 minuend, IEnumerable<FloatCurve2> subtrahends)
         {
             SortedSet<float> xKeys = new SortedSet<float>(minuend.xKeys);
@@ -735,10 +736,11 @@ namespace KerbalWindTunnel
             Array.Sort(yKeys_);
             return Subtract(minuend,subtrahends, xKeys_, yKeys_);
         }
-        public static FloatCurve2 Subtract(FloatCurve2 minuend, FloatCurve2 subtrahend) => Subtract(minuend, AsEnumerable(subtrahend));
-        private static IEnumerable<T> AsEnumerable<T>(T item) { yield return item; }
         public static FloatCurve2 Subtract(FloatCurve2 minuend, IEnumerable<FloatCurve2> subtrahends, IList<float> xKeys, IList<float> yKeys)
         {
+            if (minuend == null)
+                throw new ArgumentNullException(nameof(minuend));
+
             int xLength = xKeys.Count;
             int yLength = yKeys.Count;
             float[,] values = new float[xLength, yLength];
@@ -753,7 +755,7 @@ namespace KerbalWindTunnel
 
             bool negate = false;
 
-            foreach (FloatCurve2 curve in AsEnumerable(minuend).Concat(subtrahends))
+            foreach (FloatCurve2 curve in Enumerable.Repeat(minuend, 1).Concat(subtrahends))
             {
                 int multiplier = negate ? -1 : 1;
                 if (curve == null) continue;
@@ -815,6 +817,77 @@ namespace KerbalWindTunnel
                 negate = true;
             }
             return new FloatCurve2(xKeys, yKeys, values, dDx_in, dDx_out, dDy_in, dDy_out, ddDx_in_Dy_in, ddDx_in_Dy_out, ddDx_out_Dy_in, ddDx_out_Dy_out);
+        }
+
+        public FloatCurve2 ScaledBy(float scalar)
+        {
+            Keyframe2[,] scaledValues = new Keyframe2[xKeys.Length, yKeys.Length];
+            Array.Copy(values, scaledValues, values.Length);
+            for (int i = xKeys.Length - 1; i >= 0; i--)
+            {
+                for (int j = yKeys.Length - 1; j >= 0; j--)
+                {
+                    ref Keyframe2 key = ref scaledValues[i, j];
+                    key.value *= scalar;
+                    key.dDx_in *= scalar;
+                    key.dDx_out *= scalar;
+                    key.dDy_in *= scalar;
+                    key.dDy_out *= scalar;
+                    key.ddDx_in_Dy_in *= scalar;
+                    key.ddDx_in_Dy_out *= scalar;
+                    key.ddDx_out_Dy_in *= scalar;
+                    key.ddDx_out_Dy_out *= scalar;
+                }
+            }
+            return new FloatCurve2(xKeys, yKeys, scaledValues);
+        }
+        public FloatCurve2 ScaledBy(Func<Keyframe2, float> scalarFunc)
+        {
+            Keyframe2[,] scaledValues = new Keyframe2[xKeys.Length, yKeys.Length];
+            Array.Copy(values, scaledValues, values.Length);
+            for (int i = xKeys.Length - 1; i >= 0; i--)
+            {
+                for (int j = yKeys.Length - 1; j >= 0; j--)
+                {
+                    ref Keyframe2 key = ref scaledValues[i, j];
+                    float scalar = scalarFunc(key);
+                    key.value *= scalar;
+                    key.dDx_in *= scalar;
+                    key.dDx_out *= scalar;
+                    key.dDy_in *= scalar;
+                    key.dDy_out *= scalar;
+                    key.ddDx_in_Dy_in *= scalar;
+                    key.ddDx_in_Dy_out *= scalar;
+                    key.ddDx_out_Dy_in *= scalar;
+                    key.ddDx_out_Dy_out *= scalar;
+                }
+            }
+            return new FloatCurve2(xKeys, yKeys, scaledValues);
+        }
+        public FloatCurve2 TimesScaledBy(float scalarX, float scalarY)
+        {
+            Keyframe2[,] scaledValues = new Keyframe2[xKeys.Length, yKeys.Length];
+            Array.Copy(values, scaledValues, values.Length);
+            float invScalarX = 1 / scalarX;
+            float invScalarY = 1 / scalarY;
+            for (int i = xKeys.Length - 1; i >= 0; i--)
+            {
+                for (int j = yKeys.Length - 1; j >= 0; j--)
+                {
+                    ref Keyframe2 key = ref scaledValues[i, j];
+                    key.timeX *= scalarX;
+                    key.timeY *= scalarY;
+                    key.dDx_in *= invScalarX;
+                    key.dDx_out *= invScalarX;
+                    key.dDy_in *= invScalarY;
+                    key.dDy_out *= invScalarY;
+                    key.ddDx_in_Dy_in *= invScalarX * invScalarY;
+                    key.ddDx_in_Dy_out *= invScalarX * invScalarY;
+                    key.ddDx_out_Dy_in *= invScalarX * invScalarY;
+                    key.ddDx_out_Dy_out *= invScalarX * invScalarY;
+                }
+            }
+            return new FloatCurve2(xKeys.Select(f => f * scalarX), yKeys.Select(f => f * scalarY), scaledValues);
         }
 
         public void Dispose()
