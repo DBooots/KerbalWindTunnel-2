@@ -106,7 +106,6 @@
     <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\VesselCache\IReleasable.cs" />
     <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\VesselCache\PartCollection.cs" />
     <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\VesselCache\RotorPartCollection.cs" />
-    <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\VesselCache\SimCurves.cs" />
     <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\VesselCache\SimulatedControlSurface.cs" />
     <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\VesselCache\SimulatedEngine.cs" />
     <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\VesselCache\SimulatedLiftingSurface.cs" />

@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using KerbalWindTunnel.Extensions;
 using Smooth.Pools;
 using UnityEngine;
+using KerbalWindTunnel.Extensions;
 
 namespace KerbalWindTunnel.VesselCache
 {
@@ -28,8 +28,6 @@ namespace KerbalWindTunnel.VesselCache
         internal bool cubesNone;
         private float bodyLiftMultiplier;
         public int shipIndex;
-
-        internal SimCurves simCurves;
 
         public Quaternion vesselToPart;
         public Quaternion partToVessel;
@@ -68,7 +66,6 @@ namespace KerbalWindTunnel.VesselCache
                     cubes.ClearCubes();
                 }
             }
-            simCurves.Release();
             pool.Release(this);
         }
 
@@ -200,8 +197,6 @@ namespace KerbalWindTunnel.VesselCache
                     break;
             }
 
-            simCurves = SimCurves.Borrow(null);
-
             ModuleWheels.ModuleWheelDeployment wheelDeployment = part.FindModuleImplementing<ModuleWheels.ModuleWheelDeployment>();
             bool forcedRetract = !shieldedFromAirstream && wheelDeployment != null && wheelDeployment.Position > 0;
 
@@ -257,8 +252,6 @@ namespace KerbalWindTunnel.VesselCache
             maximum_drag = part.maximum_drag;
             minimum_drag = part.minimum_drag;
             dragReferenceVector = part.dragReferenceVector;
-
-            simCurves = SimCurves.Borrow(null);
 
             // Calling cubes.SetPartOcclusion() is somehow necessary for correct data, despite my belief that all relevant
             // fields are copied in CopyDragCubesList().
