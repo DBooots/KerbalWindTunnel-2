@@ -171,7 +171,7 @@
       <HintPath>C:/Program Files/Unity/Hub/Editor/2019.4.38f1/Editor/Data/Managed/UnityEngine/UnityEngine.TextRenderingModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UI">
-      <HintPath>D:/Users/david/Documents/Source Code/KerbalWindTunnel 2/Unity Project/Library/ScriptAssemblies/UnityEngine.UI.dll</HintPath>
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program Debug\KSP_x64_Data\Managed\UnityEngine.UI.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UIModule">
       <HintPath>C:/Program Files/Unity/Hub/Editor/2019.4.38f1/Editor/Data/Managed/UnityEngine/UnityEngine.UIModule.dll</HintPath>
