@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using KerbalWindTunnel.Extensions;
 using Smooth.Pools;
 using UnityEngine;
+using KerbalWindTunnel.Extensions;
 
 namespace KerbalWindTunnel.VesselCache
 {

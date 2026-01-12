@@ -1,10 +1,10 @@
 ﻿using Graphing.IO;
-using KerbalWindTunnel.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using UnityEngine;
+using KerbalWindTunnel.Extensions;
 
 namespace KerbalWindTunnel.VesselCache
 {
