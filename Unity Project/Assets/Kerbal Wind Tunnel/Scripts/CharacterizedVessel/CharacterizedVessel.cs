@@ -729,21 +729,27 @@ namespace KerbalWindTunnel.VesselCache
             System.Data.DataSet data = new System.Data.DataSet();
 
             WriteCurveSetIndex(0);  // bodyLift
-            bodyDrag.WriteToDataSet(data, $"{Localizer.Format("#autoLOC_KWT350")}_");   // "bodyDrag"
+            (WindTunnelSettings.ExportUsingDegrees ? bodyDrag.TimesScaledBy(1, Mathf.Rad2Deg) : bodyDrag)
+                .WriteToDataSet(data, $"{Localizer.Format("#autoLOC_KWT350")}_");  // "bodyDrag"
             
             for (int i = 1; i <= _ctrlStartIndex; i++)
                 WriteCurveSetIndex(i);  // Surfaces
-            ctrlDeltaDragPos.WriteToDataSet(data, $"{Localizer.Format("autoLOC_KWT370")}_");    // "ctrlDBodyDragPos"
-            ctrlDeltaDragNeg.WriteToDataSet(data, $"{Localizer.Format("autoLOC_KWT371")}_");    // "ctrlDBodyDragNeg"
+            (WindTunnelSettings.ExportUsingDegrees ? ctrlDeltaDragPos.TimesScaledBy(1, Mathf.Rad2Deg) : ctrlDeltaDragPos)
+                .WriteToDataSet(data, $"{Localizer.Format("autoLOC_KWT370")}_");   // "ctrlDBodyDragPos"
+            (WindTunnelSettings.ExportUsingDegrees ? ctrlDeltaDragNeg.TimesScaledBy(1, Mathf.Rad2Deg) : ctrlDeltaDragNeg)
+                .WriteToDataSet(data, $"{Localizer.Format("autoLOC_KWT371")}_");    // "ctrlDBodyDragNeg"
 
             for (int i = _ctrlStartIndex + 1; i <= _torqueStartIndex; i++)
                 WriteCurveSetIndex(i);
-            bodyTorqueD.WriteToDataSet(data, $"{Localizer.Format("autoLOC_KWT372")}_"); // "bodyTorque"
+            (WindTunnelSettings.ExportUsingDegrees ? bodyTorqueD.TimesScaledBy(1, Mathf.Rad2Deg) : bodyTorqueD)
+                .WriteToDataSet(data, $"{Localizer.Format("autoLOC_KWT372")}_"); // "bodyTorque"
 
             for (int i = _torqueStartIndex + 1; i < _ctrlTorqueStartIndex; i++)
                 WriteCurveSetIndex(i);
-            ctrlDeltaBodyTorquePos.WriteToDataSet(data, $"{Localizer.Format("autoLOC_KWT373")}_");  // "ctrlDBodyTorquePos"
-            ctrlDeltaBodyTorqueNeg.WriteToDataSet(data, $"{Localizer.Format("autoLOC_KWT374")}_");  // "ctrlDBodyTorqueNeg"
+            (WindTunnelSettings.ExportUsingDegrees ? ctrlDeltaBodyTorquePos.TimesScaledBy(1, Mathf.Rad2Deg) : ctrlDeltaBodyTorquePos)
+                .WriteToDataSet(data, $"{Localizer.Format("autoLOC_KWT373")}_");  // "ctrlDBodyTorquePos"
+            (WindTunnelSettings.ExportUsingDegrees ? ctrlDeltaBodyTorqueNeg.TimesScaledBy(1, Mathf.Rad2Deg) : ctrlDeltaBodyTorqueNeg)
+                .WriteToDataSet(data, $"{Localizer.Format("autoLOC_KWT374")}_");  // "ctrlDBodyTorqueNeg"
 
             for (int i = _ctrlTorqueStartIndex + 1; i < curveSets.Length; i++)
                 WriteCurveSetIndex(i);
@@ -769,14 +775,12 @@ namespace KerbalWindTunnel.VesselCache
                 {
                     curveTable = coefCurve.WriteToDataTable();
                     curveTable.TableName = string.Join("_", localName, Localizer.Format("#autoLOC_KWT305"));    // "Coef"
-                    // TODO: Harmonize the body drag curves (which are in radians) to degrees like this
-                    // TODO: Add a setting for degrees or radians
-                    // Convert angles to degrees
+                    // Convert angles to degrees if required
                     foreach (System.Data.DataRow row in curveTable.Rows)
                     {
-                        row[0] = (float)row[0] * Mathf.Rad2Deg;
-                        row[2] = (float)row[2] * Mathf.Deg2Rad; // this is 1/Mathf.Rad2Deg
-                        row[3] = (float)row[3] * Mathf.Deg2Rad; // Slopes get scaled by the inverse
+                        row[0] = (float)row[0] * (WindTunnelSettings.ExportUsingDegrees ? Mathf.Rad2Deg : 1);
+                        row[2] = (float)row[2] * (WindTunnelSettings.ExportUsingDegrees ? Mathf.Deg2Rad : 1);   // this is 1/Mathf.Rad2Deg
+                        row[3] = (float)row[3] * (WindTunnelSettings.ExportUsingDegrees ? Mathf.Deg2Rad : 1);   // Slopes get scaled by the inverse
                     }
                     curveTable.Columns[0].ColumnName = Graphing.Graphable.FormatNameAndUnit(Localizer.Format("#autoLOC_KWT302"), Localizer.Format("#autoLOC_KWT000"));  // "Angle of Attack" "°"
                     data.Tables.Add(curveTable);

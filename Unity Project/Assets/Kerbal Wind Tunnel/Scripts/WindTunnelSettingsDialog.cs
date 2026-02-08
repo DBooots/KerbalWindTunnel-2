@@ -154,6 +154,18 @@ namespace KerbalWindTunnel
         [Persistent]
         private bool enableGlidingCalcs = false;
 
+        public static bool ExportUsingDegrees
+        {
+            get => Instance.exportUsingDegrees;
+            set
+            {
+                Instance.exportUsingDegrees = value;
+                settingsChanged = true;
+            }
+        }
+        [Persistent]
+        private bool exportUsingDegrees = true;
+
         private static bool settingsChanged = false;
         private static bool settingsLoaded = false;
 
@@ -219,6 +231,7 @@ namespace KerbalWindTunnel
                 dialog.Add(new DialogGUIToggle(UseBlizzy, "#autoLOC_KWT108", b => UseBlizzy = b));      // "Use Blizzy's Toolbar"
 
             dialog.Add(new DialogGUIToggle(EnableGlidingCalcs, "#autoLOC_KWT133", b => EnableGlidingCalcs = b));    // "Enable gliding calculations"
+            dialog.Add(new DialogGUIToggle(ExportUsingDegrees, "#autoLOC_KWT134", b => ExportUsingDegrees = b));    // "Export using degrees"
 
             dialog.Add(new DialogGUIButton("#autoLOC_6001205", () =>         // "Accept"
             {
