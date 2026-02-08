@@ -71,10 +71,10 @@ namespace KerbalWindTunnel.VesselCache
             {
                 Vector3 inflow = AeroPredictor.InflowVect(aoa);
                 Vector3 lift = controlSurface.GetLift(inflow, evalPt, surfDeltaDeflection) / machMag;
-                return AeroPredictor.GetDragForceComponent(lift, aoa);
+                return AeroPredictor.GetLiftForceComponent(lift, aoa);
             }
-            DeltaLiftCoefficientCurve = FloatCurveExtensions.ComputeFloatCurve(dragAoAKeys_Induced, SurfLiftForce, CharacterizedVessel.toleranceF);
-            DeltaLiftCoefficientCurve = FloatCurveExtensions.Subtract(LiftCoefficientCurve, DeltaLiftCoefficientCurve);
+            DeltaLiftCoefficientCurve = FloatCurveExtensions.ComputeFloatCurve(liftAoAKeys, SurfLiftForce, CharacterizedVessel.toleranceF);
+            DeltaLiftCoefficientCurve = FloatCurveExtensions.Subtract(DeltaLiftCoefficientCurve, LiftCoefficientCurve);
             DeltaLiftCoefficientCurve.Scale(1 / surfDeltaDeflection);
         }
 
@@ -112,10 +112,10 @@ namespace KerbalWindTunnel.VesselCache
             if (DragCoefficientCurve_Parasite != null)
             {
                 DeltaDragCoefficientCurve_Parasite_Pos = FloatCurveExtensions.ComputeFloatCurve(dragAoAKeys_Parasite, SurfDragForce_Parasite_Deflected_Pos, CharacterizedVessel.toleranceF);
-                DeltaDragCoefficientCurve_Parasite_Pos = FloatCurveExtensions.Subtract(DragCoefficientCurve_Parasite, DeltaDragCoefficientCurve_Parasite_Pos);
+                DeltaDragCoefficientCurve_Parasite_Pos = FloatCurveExtensions.Subtract(DeltaDragCoefficientCurve_Parasite_Pos, DragCoefficientCurve_Parasite);
                 DeltaDragCoefficientCurve_Parasite_Pos.Scale(1 / surfDeltaDeflection);
-                DeltaDragCoefficientCurve_Parasite_Neg = FloatCurveExtensions.ComputeFloatCurve(dragAoAKeys_Parasite, SurfDragForce_Parasite_Deflected_Pos, CharacterizedVessel.toleranceF);
-                DeltaDragCoefficientCurve_Parasite_Neg = FloatCurveExtensions.Subtract(DragCoefficientCurve_Parasite, DeltaDragCoefficientCurve_Parasite_Neg);
+                DeltaDragCoefficientCurve_Parasite_Neg = FloatCurveExtensions.ComputeFloatCurve(dragAoAKeys_Parasite, SurfDragForce_Parasite_Deflected_Neg, CharacterizedVessel.toleranceF);
+                DeltaDragCoefficientCurve_Parasite_Neg = FloatCurveExtensions.Subtract(DeltaDragCoefficientCurve_Parasite_Neg, DragCoefficientCurve_Parasite);
                 DeltaDragCoefficientCurve_Parasite_Neg.Scale(-1 / surfDeltaDeflection);
             }
             else
@@ -147,10 +147,10 @@ namespace KerbalWindTunnel.VesselCache
                 float SurfDragForce_Induced_Neg(float aoa)
                     => SurfDragForce_Induced(aoa, -surfDeltaDeflection);
                 DeltaDragCoefficientCurve_Induced_Pos = FloatCurveExtensions.ComputeFloatCurve(dragAoAKeys_Induced, SurfDragForce_Induced_Pos, CharacterizedVessel.toleranceF);
-                DeltaDragCoefficientCurve_Induced_Pos = FloatCurveExtensions.Subtract(DragCoefficientCurve_Induced, DeltaDragCoefficientCurve_Induced_Pos);
+                DeltaDragCoefficientCurve_Induced_Pos = FloatCurveExtensions.Subtract(DeltaDragCoefficientCurve_Induced_Pos, DragCoefficientCurve_Induced);
                 DeltaDragCoefficientCurve_Induced_Pos.Scale(1 / surfDeltaDeflection);
                 DeltaDragCoefficientCurve_Induced_Neg = FloatCurveExtensions.ComputeFloatCurve(dragAoAKeys_Induced, SurfDragForce_Induced_Neg, CharacterizedVessel.toleranceF);
-                DeltaDragCoefficientCurve_Induced_Neg = FloatCurveExtensions.Subtract(DragCoefficientCurve_Induced, DeltaDragCoefficientCurve_Induced_Neg);
+                DeltaDragCoefficientCurve_Induced_Neg = FloatCurveExtensions.Subtract(DeltaDragCoefficientCurve_Induced_Neg, DragCoefficientCurve_Induced);
                 DeltaDragCoefficientCurve_Induced_Neg.Scale(-1 / surfDeltaDeflection);
             }
             else
