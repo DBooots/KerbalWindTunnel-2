@@ -64,6 +64,49 @@ namespace KerbalWindTunnel.VesselCache
         internal FloatCurve2 ctrlDeltaBodyTorquePos;
         internal FloatCurve2 ctrlDeltaBodyTorqueNeg;
 
+        protected List<(FloatCurve machCurve, FloatCurve coefCurve)>[] CurveSets
+        {
+            get => new List<(FloatCurve machCurve, FloatCurve coefCurve)>[]
+            {
+                bodyLift,
+                surfaceLift,
+                surfaceDragP,
+                surfaceDragI,
+                ctrlDeltaLift,
+                ctrlDeltaDragP_Pos,
+                ctrlDeltaDragP_Neg,
+                ctrlDeltaDragI_Pos,
+                ctrlDeltaDragI_Neg,
+                bodyTorqueL,
+                surfaceTorqueL,
+                surfaceTorqueD,
+                ctrlDeltaTorqueL,
+                ctrlDeltaTorqueD_Pos,
+                ctrlDeltaTorqueD_Neg
+            };
+        }
+        protected readonly string[] curveSetNames =
+            {
+                Localizer.Format("#autoLOC_KWT353"),    // "bodyLift"
+                Localizer.Format("#autoLOC_KWT354"),    // "surfLift"
+                Localizer.Format("#autoLOC_KWT351"),    // "surfDrag"
+                Localizer.Format("#autoLOC_KWT352"),    // "induDrag"
+                Localizer.Format("#autoLOC_KWT359"),    // "ctrlDLift"
+                Localizer.Format("#autoLOC_KWT360"),    // "ctrlDDrag_Pos"
+                Localizer.Format("#autoLOC_KWT361"),    // "ctrlDDrag_Neg"
+                Localizer.Format("#autoLOC_KWT362"),    // "ctrlDIDrag_Pos"
+                Localizer.Format("#autoLOC_KWT363"),    // "ctrlDIDrag_Neg"
+                Localizer.Format("#autoLOC_KWT364"),    // "bodyTorqueL"
+                Localizer.Format("#autoLOC_KWT365"),    // "surfTorqueL"
+                Localizer.Format("#autoLOC_KWT366"),    // "surfTorqueD"
+                Localizer.Format("#autoLOC_KWT367"),    // "ctrlDTorqueL"
+                Localizer.Format("#autoLOC_KWT368"),    // "ctrlDTorqueD_Pos"
+                Localizer.Format("#autoLOC_KWT369"),    // "ctrlDTorqueD_Neg"
+            };
+        protected readonly int _ctrlStartIndex = 4;
+        protected readonly int _torqueStartIndex = 9;
+        protected readonly int _ctrlTorqueStartIndex = 12;
+
         public FloatCurve AoAMax { get; private set; }
         public FloatCurve AeroMin { get; private set; } = null;
         public FloatCurve AeroMax { get; private set; } = null;
@@ -85,6 +128,9 @@ namespace KerbalWindTunnel.VesselCache
 
         public CharacterizedVessel(SimulatedVessel vessel)
         {
+            if (CurveSets.Length != curveSetNames.Length)
+                throw new ArgumentException("Length of curveSetNames does not match the length of curveSets.");
+
             this.vessel = vessel;
 
             /*  How to characterize a vessel:
@@ -649,33 +695,83 @@ namespace KerbalWindTunnel.VesselCache
             return AoAMax.EvaluateThreadSafe(conditions.mach);
         }
 
-        protected override System.Data.DataSet WriteToDataSet()
+        protected Dictionary<FloatCurve, (string name, List<(FloatCurve coefCurve, string name)> curveList)> CompileCurveSetsForExport(List<(FloatCurve machCurve, FloatCurve coefCurve)>[] curveSets)
         {
-            System.Data.DataSet data = new System.Data.DataSet();
+            Dictionary<FloatCurve, (string name, List<(FloatCurve coefCurve, string name)> curveList)> curveBlocks =
+                new Dictionary<FloatCurve, (string name, List<(FloatCurve coefCurve, string name)> curveList)>(FloatCurveComparer.Instance);
 
-            bodyDrag.WriteToDataSet(data, $"{Localizer.Format("#autoLOC_KWT350")}_");   // "bodyDrag"
-            //TODO: ctrlDeltaDragNeg.WriteToDataSet(data, "ctrlNeg_");
-            //TODO: ctrlDeltaDragPos.WriteToDataSet(data, "ctrlPos_");
-
-#if OUTSIDE_UNITY
-            static
-#endif
-            void WriteCurveSet(System.Data.DataSet ds, List<(FloatCurve machCurve, FloatCurve forceCurve)> curveSet, string name)
+            void AddCurveSet(List<(FloatCurve machCurve, FloatCurve coefCurve)> curveSet, string curveSetName)
             {
                 bool multiple = curveSet.Count > 1;
-                int setIndex = 0;
-                foreach (var (machCurve, forceCurve) in curveSet)
+                for (int i = 0; i < curveSet.Count; i++)
                 {
-                    string localName = multiple ? $"{name}{setIndex}" : name;
-                    System.Data.DataTable curveTable = machCurve.WriteToDataTable();
-                    curveTable.TableName = string.Join("_", localName, Localizer.Format("#autoLOC_KWT349"));    // "MFactor"
-                    curveTable.Columns[0].ColumnName = Graphing.Graphable.FormatNameAndUnit(Localizer.Format("#autoLOC_KWT301"), "");   // "Mach Number"
-                    ds.Tables.Add(curveTable);
-                    curveTable = forceCurve.WriteToDataTable();
+                    string localName = multiple ? $"{curveSetName}{i}" : curveSetName;
+                    (FloatCurve machCurve, FloatCurve coefCurve) = curveSet[i];
+                    if (curveBlocks.ContainsKey(machCurve))
+                        curveBlocks[machCurve].curveList.Add((coefCurve, localName));
+                    else
+                        curveBlocks.Add(machCurve, (localName, new List<(FloatCurve coefCurve, string name)> { (coefCurve, localName) }));
+                }
+            }
+
+            for (int i = 0; i < curveSets.Length; i++)
+                AddCurveSet(curveSets[i], curveSetNames[i]);
+
+            return curveBlocks;
+        }
+
+        protected override System.Data.DataSet WriteToDataSet()
+        {
+            var curveSets = CurveSets;
+            var curveSetDict = CompileCurveSetsForExport(curveSets);
+            HashSet<FloatCurve> outstandingKeys = new HashSet<FloatCurve>(curveSetDict.Keys);
+
+            System.Data.DataSet data = new System.Data.DataSet();
+
+            WriteCurveSetIndex(0);  // bodyLift
+            bodyDrag.WriteToDataSet(data, $"{Localizer.Format("#autoLOC_KWT350")}_");   // "bodyDrag"
+            
+            for (int i = 1; i <= _ctrlStartIndex; i++)
+                WriteCurveSetIndex(i);  // Surfaces
+            ctrlDeltaDragPos.WriteToDataSet(data, $"{Localizer.Format("autoLOC_KWT370")}_");    // "ctrlDBodyDragPos"
+            ctrlDeltaDragNeg.WriteToDataSet(data, $"{Localizer.Format("autoLOC_KWT371")}_");    // "ctrlDBodyDragNeg"
+
+            for (int i = _ctrlStartIndex + 1; i <= _torqueStartIndex; i++)
+                WriteCurveSetIndex(i);
+            bodyTorqueD.WriteToDataSet(data, $"{Localizer.Format("autoLOC_KWT372")}_"); // "bodyTorque"
+
+            for (int i = _torqueStartIndex + 1; i < _ctrlTorqueStartIndex; i++)
+                WriteCurveSetIndex(i);
+            ctrlDeltaBodyTorquePos.WriteToDataSet(data, $"{Localizer.Format("autoLOC_KWT373")}_");  // "ctrlDBodyTorquePos"
+            ctrlDeltaBodyTorqueNeg.WriteToDataSet(data, $"{Localizer.Format("autoLOC_KWT374")}_");  // "ctrlDBodyTorqueNeg"
+
+            for (int i = _ctrlTorqueStartIndex + 1; i < curveSets.Length; i++)
+                WriteCurveSetIndex(i);
+
+
+            void WriteCurveSetIndex(int index)
+            {
+                foreach ((FloatCurve machCurve, _) in curveSets[index])
+                    if (outstandingKeys.Contains(machCurve))
+                    {
+                        WriteCurveSet(machCurve, curveSetDict[machCurve].name, curveSetDict[machCurve].curveList);
+                        outstandingKeys.Remove(machCurve);
+                    }
+            }
+            void WriteCurveSet(FloatCurve machCurve, string machSeriesName, List<(FloatCurve coefCurve, string localName)> coefCurves)
+            {
+                System.Data.DataTable curveTable = machCurve.WriteToDataTable();
+                curveTable.TableName = string.Join("_", machSeriesName, Localizer.Format("#autoLOC_KWT349"));    // "MFactor"
+                curveTable.Columns[0].ColumnName = Graphing.Graphable.FormatNameAndUnit(Localizer.Format("#autoLOC_KWT301"), "");   // "Mach Number"
+                data.Tables.Add(curveTable);
+
+                foreach (var (coefCurve, localName) in coefCurves)
+                {
+                    curveTable = coefCurve.WriteToDataTable();
                     curveTable.TableName = string.Join("_", localName, Localizer.Format("#autoLOC_KWT305"));    // "Coef"
-                    // Convert angles to degrees
-                    // TODO: Harmonize this with the drag curves (which are in radians)
+                    // TODO: Harmonize the body drag curves (which are in radians) to degrees like this
                     // TODO: Add a setting for degrees or radians
+                    // Convert angles to degrees
                     foreach (System.Data.DataRow row in curveTable.Rows)
                     {
                         row[0] = (float)row[0] * Mathf.Rad2Deg;
@@ -683,16 +779,9 @@ namespace KerbalWindTunnel.VesselCache
                         row[3] = (float)row[3] * Mathf.Deg2Rad; // Slopes get scaled by the inverse
                     }
                     curveTable.Columns[0].ColumnName = Graphing.Graphable.FormatNameAndUnit(Localizer.Format("#autoLOC_KWT302"), Localizer.Format("#autoLOC_KWT000"));  // "Angle of Attack" "°"
-                    ds.Tables.Add(curveTable);
+                    data.Tables.Add(curveTable);
                 }
             }
-
-            WriteCurveSet(data, surfaceDragP, Localizer.Format("#autoLOC_KWT351")); // "surfDrag"
-            WriteCurveSet(data, surfaceDragI, Localizer.Format("#autoLOC_KWT352")); // "induDrag"
-            WriteCurveSet(data, bodyLift, Localizer.Format("#autoLOC_KWT353"));     // "bodyLift"
-            WriteCurveSet(data, surfaceLift, Localizer.Format("#autoLOC_KWT354"));  // "surfLift"
-            // TODO: induDrag_MFactor = surfLift_MFactor and one of them should be deleted.
-
 
             return data;
         }
