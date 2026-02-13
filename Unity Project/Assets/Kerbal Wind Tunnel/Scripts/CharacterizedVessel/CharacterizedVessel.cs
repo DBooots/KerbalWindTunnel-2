@@ -64,7 +64,7 @@ namespace KerbalWindTunnel.VesselCache
         internal FloatCurve2 ctrlDeltaBodyTorquePos;
         internal FloatCurve2 ctrlDeltaBodyTorqueNeg;
 
-        protected List<(FloatCurve machCurve, FloatCurve coefCurve)>[] CurveSets
+        public List<(FloatCurve machCurve, FloatCurve coefCurve)>[] CurveSets
         {
             get => new List<(FloatCurve machCurve, FloatCurve coefCurve)>[]
             {
@@ -85,7 +85,7 @@ namespace KerbalWindTunnel.VesselCache
                 ctrlDeltaTorqueD_Neg
             };
         }
-        protected readonly string[] curveSetNames =
+        public readonly static string[] curveSetNames =
             {
                 Localizer.Format("#autoLOC_KWT353"),    // "bodyLift"
                 Localizer.Format("#autoLOC_KWT354"),    // "surfLift"
@@ -695,7 +695,7 @@ namespace KerbalWindTunnel.VesselCache
             return AoAMax.EvaluateThreadSafe(conditions.mach);
         }
 
-        protected Dictionary<FloatCurve, (string name, List<(FloatCurve coefCurve, string name)> curveList)> CompileCurveSetsForExport(List<(FloatCurve machCurve, FloatCurve coefCurve)>[] curveSets)
+        public static Dictionary<FloatCurve, (string name, List<(FloatCurve coefCurve, string name)> curveList)> CompileCurveSetsForExport(List<(FloatCurve machCurve, FloatCurve coefCurve)>[] curveSets)
         {
             Dictionary<FloatCurve, (string name, List<(FloatCurve coefCurve, string name)> curveList)> curveBlocks =
                 new Dictionary<FloatCurve, (string name, List<(FloatCurve coefCurve, string name)> curveList)>(FloatCurveComparer.Instance);
