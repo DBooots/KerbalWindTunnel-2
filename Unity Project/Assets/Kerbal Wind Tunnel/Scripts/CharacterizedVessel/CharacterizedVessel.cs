@@ -792,17 +792,39 @@ namespace KerbalWindTunnel.VesselCache
 
         protected override async Task WriteToFileXLS(string path, System.Data.DataSet data)
         {
-            for (int i = 0; i < Math.Min(data.Tables.Count, 5); i++)
-                await Task.Run(() => Graphing.IO.GraphIO.SpreadsheetWriter.Write(path, data.Tables[i].TableName, data.Tables[i], new Graphing.IO.SpreadsheetOptions(false, false, 1, 1))).ConfigureAwait(false);
-            for (int i = 5; i < data.Tables.Count; i++)
-                await Task.Run(() => Graphing.IO.GraphIO.SpreadsheetWriter.Write(path, data.Tables[i].TableName, data.Tables[i], new Graphing.IO.SpreadsheetOptions(true, true, 1, 0))).ConfigureAwait(false);
+            for (int i = 0; i < data.Tables.Count; i++)
+            {
+                string sheetName = data.Tables[i].TableName;
+                bool is2D = sheetName.StartsWith(Localizer.Format("#autoLOC_KWT350")) ||
+                    sheetName.StartsWith(Localizer.Format("autoLOC_KWT370")) ||
+                    sheetName.StartsWith(Localizer.Format("autoLOC_KWT371")) ||
+                    sheetName.StartsWith(Localizer.Format("autoLOC_KWT372")) ||
+                    sheetName.StartsWith(Localizer.Format("autoLOC_KWT373")) ||
+                    sheetName.StartsWith(Localizer.Format("autoLOC_KWT374"));
+                sheetName = Graphing.IO.GraphIO.StripInvalidSheetChars(sheetName);
+                if (is2D)
+                    await Task.Run(() => Graphing.IO.GraphIO.SpreadsheetWriter.Write(path, sheetName, data.Tables[i], new Graphing.IO.SpreadsheetOptions(false, false, 1, 1))).ConfigureAwait(false);
+                else
+                    await Task.Run(() => Graphing.IO.GraphIO.SpreadsheetWriter.Write(path, sheetName, data.Tables[i], new Graphing.IO.SpreadsheetOptions(true, true, 1, 0))).ConfigureAwait(false);
+            }
         }
         protected override async Task WriteToFileCSV(string path, System.Data.DataSet data)
         {
-            for (int i = 0; i < Math.Min(data.Tables.Count, 5); i++)
-                await WindTunnel.MiniExcelWrapper.WriteToCSV(path.Insert(path.Length - 4, $"_{data.Tables[i].TableName}"), data.Tables[i], printHeader: false, sheetName: data.Tables[0].TableName);
-            for (int i = 5; i < data.Tables.Count; i++)
-                await WindTunnel.MiniExcelWrapper.WriteToCSV(path.Insert(path.Length - 4, $"_{data.Tables[i].TableName}"), data.Tables[i], printHeader: true, sheetName: data.Tables[i].TableName);
+            for (int i = 0; i < data.Tables.Count; i++)
+            {
+                string sheetName = data.Tables[i].TableName;
+                bool is2D = sheetName.StartsWith(Localizer.Format("#autoLOC_KWT350")) ||
+                    sheetName.StartsWith(Localizer.Format("autoLOC_KWT370")) ||
+                    sheetName.StartsWith(Localizer.Format("autoLOC_KWT371")) ||
+                    sheetName.StartsWith(Localizer.Format("autoLOC_KWT372")) ||
+                    sheetName.StartsWith(Localizer.Format("autoLOC_KWT373")) ||
+                    sheetName.StartsWith(Localizer.Format("autoLOC_KWT374"));
+                sheetName = Graphing.IO.GraphIO.StripInvalidFileChars(sheetName);
+                if (is2D)
+                    await WindTunnel.MiniExcelWrapper.WriteToCSV(path.Insert(path.Length - 4, $"_{sheetName}"), data.Tables[i], printHeader: false, sheetName: data.Tables[0].TableName);
+                else
+                    await WindTunnel.MiniExcelWrapper.WriteToCSV(path.Insert(path.Length - 4, $"_{sheetName}"), data.Tables[i], printHeader: true, sheetName: data.Tables[i].TableName);
+            }
         }
     }
 }
