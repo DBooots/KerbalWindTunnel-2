@@ -1,9 +1,9 @@
-﻿using Graphing.IO;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using UnityEngine;
+using Graphing.IO;
 using KerbalWindTunnel.Extensions;
 
 namespace KerbalWindTunnel.VesselCache
@@ -17,32 +17,55 @@ namespace KerbalWindTunnel.VesselCache
             lock (stringBuilder)
             {
                 stringBuilder.Clear();
-                string indentString = GenerateIndentString(1);
-                stringBuilder.AppendLine("{");
-                stringBuilder.AppendLine(indentString + "\"entries\": [");
-                WriteValue("numCurves", 2, true);
-                WriteValue(vessel.bodyLift.Count + vessel.surfaceLift.Count, 2, vessel.bodyLift.Count + vessel.surfaceLift.Count > 0);
-                if (vessel.bodyLift.Count + vessel.surfaceLift.Count > 0)
+
+                var curveSets = vessel.CurveSets;
+                var curveSetDict = CharacterizedVessel.CompileCurveSetsForExport(curveSets);
+                HashSet<FloatCurve> outstandingKeys = new HashSet<FloatCurve>(curveSetDict.Keys, FloatCurveComparer.Instance);
+                //HashSet<FloatCurve> lift = new HashSet<FloatCurve>(CharacterizedVessel._liftIndices.
+                    //SelectMany(i => curveSets[i]).Select(cs => cs.coefCurve),
+                    //FloatCurveComparer.Instance);
+                HashSet<FloatCurve> controls = new HashSet<FloatCurve>(CharacterizedVessel._ctrlIndices.Intersect(CharacterizedVessel._liftIndices).
+                    SelectMany(i => curveSets[i]).Select(cs => cs.coefCurve),
+                    FloatCurveComparer.Instance);
+
+                IEnumerable<List<(string, object)>> WriteCurveSetIndex(int index)
                 {
-                    // Treat the body lift curves and the surface lift curves the same.
-                    IEnumerable<(FloatCurve machCurve, FloatCurve liftCurve)> liftCurveSets = vessel.bodyLift.Union(vessel.surfaceLift);
-                    // Write the mach scalar curves (a List of FloatCurves)
-                    WriteValue("machScalar", 2, true);
-                    WriteList(liftCurveSets.Select(curveSet => curveSet.machCurve), 2, true);
-                    // Write the lift coefficient curves (a List of FloatCurves)
-                    WriteValue("liftCurve", 2, true);
-                    WriteList(liftCurveSets.Select(curveSet => FloatCurveExtensions.TimesScaledBy(curveSet.liftCurve, Mathf.Rad2Deg)), 2, true);
-                    // Write the AoA at which max lift is obtained (a FloatCurve with respect to Mach number)
-                    WriteValue("maxLiftAoA", 2, true);
-                    WriteFloatCurve(FloatCurveExtensions.ScaledBy(GetMaxLiftAoA(vessel), Mathf.Rad2Deg), 2, true);
-                    // Write the AoA at which max L/D is obtained (a FloatCurve with respect to Mach number (with some assumption about altitude))
-                    WriteValue("maxLDAoA", 2, true);
-                    WriteFloatCurve(FloatCurveExtensions.ScaledBy(GetMaxLDAoA(vessel), Mathf.Rad2Deg), 2, false);
+                    foreach ((FloatCurve machCurve, _) in curveSets[index])
+                    {
+                        if (outstandingKeys.Contains(machCurve))
+                        {
+                            List<(string, object)> result = new List<(string, object)> { ("machScalar", machCurve) };
+                            List<FloatCurve> liftCurves = new List<FloatCurve>();
+                            List<FloatCurve> ctrlCurves = new List<FloatCurve>();
+                            foreach ((FloatCurve coefCurve, _) in curveSetDict[machCurve].curveList)
+                            {
+                                if (controls.Contains(coefCurve))
+                                    ctrlCurves.Add(coefCurve);
+                                else
+                                    liftCurves.Add(coefCurve);
+                            }
+                            if (liftCurves.Count > 0)
+                                result.Add(("liftCurve", FloatCurveExtensions.Superposition(liftCurves)));
+                            if (ctrlCurves.Count > 0)
+                                result.Add(("ctrlCurve", FloatCurveExtensions.Superposition(ctrlCurves)));
+                            outstandingKeys.Remove(machCurve);
+                            yield return result;
+                        }
+                        else
+                            yield return null;
+                    }
                 }
-                stringBuilder.AppendLine();
-                stringBuilder.AppendLine(indentString + "],");
-                stringBuilder.AppendLine(indentString + "\"$type\": \"kOS.Safe.Encapsulation.Lexicon\"");
-                stringBuilder.Append("}");
+                List<List<(string, object)>> liftData = CharacterizedVessel._liftIndices.SelectMany(WriteCurveSetIndex).Where(l => l != null).ToList();
+
+                List<(string, object)> vesselData = new List<(string, object)>
+                {
+                    ("numCurves", liftData.Count),
+                    ("liftData", liftData),
+                    ("maxLiftAoA", FloatCurveExtensions.ScaledBy(GetMaxLiftAoA(vessel), Mathf.Rad2Deg)),
+                    ("maxLDAoA", FloatCurveExtensions.ScaledBy(GetMaxLDAoA(vessel), Mathf.Rad2Deg))
+                };
+
+                WriteDictionary(vesselData);
 
                 System.IO.File.WriteAllText(path, stringBuilder.ToString());
             }
