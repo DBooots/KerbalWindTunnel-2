@@ -47,7 +47,8 @@ namespace KerbalWindTunnel.VesselCache
                 System.IO.File.WriteAllText(path, stringBuilder.ToString());
             }
         }
-        private void WriteList<T>(IEnumerable<T> values, int indentLevel = 0, bool appendComma = false)
+
+        private void WriteList(System.Collections.IEnumerable values, int indentLevel = 0, bool appendComma = false)
         {
             string indentString = GenerateIndentString(indentLevel);
             string innerIndentString = GenerateIndentString(indentLevel + 1);
@@ -57,31 +58,9 @@ namespace KerbalWindTunnel.VesselCache
             bool moveNext = enumerator.MoveNext();
             while (moveNext)
             {
-                T value = enumerator.Current;
+                object value = enumerator.Current;
                 moveNext = enumerator.MoveNext();
-                switch (value)
-                {
-                    case FloatCurve floatCurve:
-                        WriteFloatCurve(floatCurve, indentLevel + 2, moveNext);
-                        break;
-                    case Keyframe keyframe:
-                        WriteKeyframe(keyframe, indentLevel + 2, moveNext);
-                        break;
-                    case string s:
-                        WriteValue(s, indentLevel + 2, moveNext);
-                        break;
-                    case double d:
-                        WriteValue(d, indentLevel + 2, moveNext);
-                        break;
-                    case float f:
-                        WriteValue(f, indentLevel + 2, moveNext);
-                        break;
-                    case int i:
-                        WriteValue(i, indentLevel + 2, moveNext);
-                        break;
-                    default:
-                        throw new NotImplementedException();
-                }
+                WriteObject(value, indentLevel + 2, moveNext);
             }
             stringBuilder.AppendLine();
             stringBuilder.AppendLine(innerIndentString + "],");
@@ -91,6 +70,35 @@ namespace KerbalWindTunnel.VesselCache
             else
                 stringBuilder.Append(indentString + "}");
         }
+
+        private void WriteDictionary(Dictionary<string, object> dict, int indentLevel = 0, bool appendComma = false)
+            => WriteDictionary(dict.Select(kvp => (kvp.Key, kvp.Value)), indentLevel, appendComma);
+        private void WriteDictionary(IEnumerable<(string, object)> dictList, int indentLevel = 0, bool appendComma = false)
+        {
+            string indentString = GenerateIndentString(indentLevel);
+            string innerIndentString = GenerateIndentString(indentLevel + 1);
+            stringBuilder.AppendLine(indentString + "{");
+            stringBuilder.AppendLine(innerIndentString + "\"entries\": [");
+
+            var enumerator = dictList.GetEnumerator();
+            bool moveNext = enumerator.MoveNext();
+            while (moveNext)
+            {
+                (string key, object value) = enumerator.Current;
+                moveNext = enumerator.MoveNext();
+                WriteValue(key, indentLevel + 2, true);
+                WriteObject(value, indentLevel + 2, moveNext);
+            }
+
+            stringBuilder.AppendLine();
+            stringBuilder.AppendLine(innerIndentString + "],");
+            stringBuilder.AppendLine(innerIndentString + "\"$type\": \"kOS.Safe.Encapsulation.Lexicon\"");
+            if (appendComma)
+                stringBuilder.AppendLine(indentString + "},");
+            else
+                stringBuilder.Append(indentString + "}");
+        }
+
         private void WriteFloatCurve(FloatCurve curve, int indentLevel = 0, bool appendComma = false)
             => WriteList(curve.Curve.keys, indentLevel, appendComma);
         /*private void WriteFloatCurve(FloatCurve curve, int indentLevel = 0, bool appendComma = false)
@@ -187,6 +195,54 @@ namespace KerbalWindTunnel.VesselCache
                 stringBuilder.AppendLine(indentString + "},");
             else
                 stringBuilder.Append(indentString + "}");
+        }
+
+        private void WriteObject(object value, int indentLevel = 0, bool appendComma = false)
+        {
+            switch (value)
+            {
+                case FloatCurve floatCurve:
+                    WriteFloatCurve(floatCurve, indentLevel, appendComma);
+                    break;
+                case Keyframe keyframe:
+                    WriteKeyframe(keyframe, indentLevel, appendComma);
+                    break;
+                case string s:
+                    WriteValue(s, indentLevel, appendComma);
+                    break;
+                case double d:
+                    WriteValue(d, indentLevel, appendComma);
+                    break;
+                case float f:
+                    WriteValue(f, indentLevel, appendComma);
+                    break;
+                case int i:
+                    WriteValue(i, indentLevel, appendComma);
+                    break;
+                default:
+                    Type type = value.GetType();
+                    if (value is System.Collections.IDictionary && type.GenericTypeArguments.Length == 2 && type.GenericTypeArguments[0] == typeof(string))
+                    {
+                        WriteDictionary((Dictionary<string, object>)value, indentLevel, appendComma);
+                        break;
+                    }
+                    else if (value is System.Collections.IEnumerable enumerable)
+                    {
+                        if (type.IsGenericType)
+                        {
+                            Type elementType = type.GenericTypeArguments[0];
+                            if (elementType.IsGenericType && elementType.GetGenericTypeDefinition() == typeof(ValueTuple<,>) && elementType.GenericTypeArguments[0] == typeof(string))
+                                WriteDictionary((IEnumerable<(string, object)>)value, indentLevel, appendComma);
+                            else
+                                WriteList(enumerable, indentLevel, appendComma);
+                        }
+                        else
+                            WriteList(enumerable, indentLevel, appendComma);
+                        break;
+                    }
+                    else
+                        throw new NotImplementedException();
+            }
         }
         private string GenerateIndentString(int indentLevel)
         {
