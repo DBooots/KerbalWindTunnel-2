@@ -103,9 +103,10 @@ namespace KerbalWindTunnel.VesselCache
                 Localizer.Format("#autoLOC_KWT368"),    // "ctrlDTorqueD_Pos"
                 Localizer.Format("#autoLOC_KWT369"),    // "ctrlDTorqueD_Neg"
             };
-        protected readonly int _ctrlStartIndex = 4;
-        protected readonly int _torqueStartIndex = 9;
-        protected readonly int _ctrlTorqueStartIndex = 12;
+        public static readonly int[] _liftIndices = [0, 1, 4];
+        public static readonly int[] _dragIndices = [2, 3, 5, 6, 7, 8];
+        public static readonly int[] _torqueIndices = [9, 10, 11, 12, 13, 14];
+        public static readonly int[] _ctrlIndices = [4, 5, 6, 7, 8, 12, 13, 14];
 
         public FloatCurve AoAMax { get; private set; }
         public FloatCurve AeroMin { get; private set; } = null;
@@ -724,7 +725,7 @@ namespace KerbalWindTunnel.VesselCache
         {
             var curveSets = CurveSets;
             var curveSetDict = CompileCurveSetsForExport(curveSets);
-            HashSet<FloatCurve> outstandingKeys = new HashSet<FloatCurve>(curveSetDict.Keys);
+            HashSet<FloatCurve> outstandingKeys = new HashSet<FloatCurve>(curveSetDict.Keys, FloatCurveComparer.Instance);
 
             System.Data.DataSet data = new System.Data.DataSet();
 
@@ -732,26 +733,30 @@ namespace KerbalWindTunnel.VesselCache
             (WindTunnelSettings.ExportUsingDegrees ? bodyDrag.TimesScaledBy(1, Mathf.Rad2Deg) : bodyDrag)
                 .WriteToDataSet(data, $"{Localizer.Format("#autoLOC_KWT350")}_");  // "bodyDrag"
             
-            for (int i = 1; i <= _ctrlStartIndex; i++)
+            foreach (int i in _liftIndices.Skip(1).Union(_dragIndices).Except(_ctrlIndices))
                 WriteCurveSetIndex(i);  // Surfaces
             (WindTunnelSettings.ExportUsingDegrees ? ctrlDeltaDragPos.TimesScaledBy(1, Mathf.Rad2Deg) : ctrlDeltaDragPos)
                 .WriteToDataSet(data, $"{Localizer.Format("autoLOC_KWT370")}_");   // "ctrlDBodyDragPos"
             (WindTunnelSettings.ExportUsingDegrees ? ctrlDeltaDragNeg.TimesScaledBy(1, Mathf.Rad2Deg) : ctrlDeltaDragNeg)
                 .WriteToDataSet(data, $"{Localizer.Format("autoLOC_KWT371")}_");    // "ctrlDBodyDragNeg"
 
-            for (int i = _ctrlStartIndex + 1; i <= _torqueStartIndex; i++)
+            foreach (int i in _ctrlIndices.Except(_torqueIndices))
                 WriteCurveSetIndex(i);
             (WindTunnelSettings.ExportUsingDegrees ? bodyTorqueD.TimesScaledBy(1, Mathf.Rad2Deg) : bodyTorqueD)
                 .WriteToDataSet(data, $"{Localizer.Format("autoLOC_KWT372")}_"); // "bodyTorque"
 
-            for (int i = _torqueStartIndex + 1; i < _ctrlTorqueStartIndex; i++)
+            foreach (int i in _torqueIndices.Except(_ctrlIndices))
                 WriteCurveSetIndex(i);
             (WindTunnelSettings.ExportUsingDegrees ? ctrlDeltaBodyTorquePos.TimesScaledBy(1, Mathf.Rad2Deg) : ctrlDeltaBodyTorquePos)
                 .WriteToDataSet(data, $"{Localizer.Format("autoLOC_KWT373")}_");  // "ctrlDBodyTorquePos"
             (WindTunnelSettings.ExportUsingDegrees ? ctrlDeltaBodyTorqueNeg.TimesScaledBy(1, Mathf.Rad2Deg) : ctrlDeltaBodyTorqueNeg)
                 .WriteToDataSet(data, $"{Localizer.Format("autoLOC_KWT374")}_");  // "ctrlDBodyTorqueNeg"
 
-            for (int i = _ctrlTorqueStartIndex + 1; i < curveSets.Length; i++)
+            foreach (int i in _torqueIndices.Intersect(_ctrlIndices))
+                WriteCurveSetIndex(i);
+
+            // Catch-all. Outstanding keys should be empty by this point, but this will catch any curves forgotten by specific index.
+            for (int i = 0; i < curveSets.Length; i++)
                 WriteCurveSetIndex(i);
 
 
