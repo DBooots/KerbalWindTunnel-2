@@ -477,8 +477,6 @@ namespace KerbalWindTunnel.Extensions
             {
                 h.Add(k.time);
                 h.Add(k.value);
-                h.Add(k.inTangent);
-                h.Add(k.outTangent);
             }
             return h.ToHashCode();
         }
