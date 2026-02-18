@@ -57,11 +57,15 @@ namespace KerbalWindTunnel.VesselCache
                 }
                 List<List<(string, object)>> liftData = CharacterizedVessel._liftIndices.SelectMany(WriteCurveSetIndex).Where(l => l != null).ToList();
 
+                FloatCurve maxLiftAoA = FloatCurveExtensions.ScaledBy(GetMaxLiftAoA(vessel), Mathf.Rad2Deg);
+                FloatCurve maxStableAoA = FloatCurveExtensions.ScaledBy(GetMaxStableAoA(vessel), Mathf.Rad2Deg);
                 List<(string, object)> vesselData = new List<(string, object)>
                 {
                     ("numCurves", liftData.Count),
                     ("liftData", liftData),
-                    ("maxLiftAoA", FloatCurveExtensions.ScaledBy(GetMaxLiftAoA(vessel), Mathf.Rad2Deg)),
+                    ("maxLiftAoA", maxLiftAoA),
+                    ("maxStableAoA", maxStableAoA),
+                    ("maxAoA", FloatCurveExtensions.Min(maxLiftAoA, maxStableAoA)),
                     ("maxLDAoA", FloatCurveExtensions.ScaledBy(GetMaxLDAoA(vessel), Mathf.Rad2Deg))
                 };
 
@@ -310,6 +314,27 @@ namespace KerbalWindTunnel.VesselCache
             new Keyframe(25, 25000, 500, 0) });
         public static FloatCurve GetMaxLiftAoA(CharacterizedVessel vessel)  // with respect to Mach #
          => vessel.AoAMax;
+        public static FloatCurve GetMaxStableAoA(CharacterizedVessel vessel)    // with respect to Mach #
+        {
+            SortedSet<float> machKeys = new SortedSet<float>();
+            foreach (FloatCurve curve in vessel.bodyLift.Select(curveSet => curveSet.machCurve))
+                machKeys.UnionWith(curve.Curve.keys.Select(k => k.time));
+            foreach (FloatCurve curve in vessel.surfaceLift.Select(curveSet => curveSet.machCurve))
+                machKeys.UnionWith(curve.Curve.keys.Select(k => k.time));
+
+            CelestialBody body = WindTunnelWindow.Instance.CelestialBody;
+            float guess = float.NaN;
+
+            float FindMaxStableAoAForMach(float mach)
+            {
+                float altitude = machAltitude.EvaluateThreadSafe(mach);
+                AeroPredictor.Conditions conditions = AeroPredictor.Conditions.ConditionsByMach(body, mach, altitude, true);
+                float result = AeroOptimizer.FindStableAoA(vessel, conditions, 1, guess);
+                guess = result;
+                return result;
+            }
+            return FloatCurveExtensions.ComputeFloatCurve(machKeys, FindMaxStableAoAForMach, 0.15f);
+        }
         public static FloatCurve GetMaxLDAoA(CharacterizedVessel vessel)    // with respect to Mach #
         {
             SortedSet<float> machKeys = new SortedSet<float>();
