@@ -125,6 +125,20 @@ namespace KerbalWindTunnel
             }
             return GlidingObjectiveFuncInternal;
         }
+        /// <summary>
+        /// Generates the pitch input objective function, which is a function that maps to the net torque (or a proxy thereof) given a pitch input, for defined conditions and angle of attack.
+        /// Used for root finding.
+        /// </summary>
+        /// <param name="conditions">The conditions.</param>
+        /// <param name="pitchInput">The pitch input to solve for.</param>
+        /// <param name="dryTorque">If set to <c>true</c>, uses the dry torque.</param>
+        /// <returns>A function that maps to the net torque, given a pitch input.</returns>
+        public virtual Func<double, double> SteadyAoAObjectiveFunc(Conditions conditions, float pitchInput, bool dryTorque = false)
+        {
+            double SteadyAoAObjectiveFuncInternal(double aoa) =>
+                GetAeroTorque(conditions, (float)aoa, pitchInput, dryTorque).x;
+            return SteadyAoAObjectiveFuncInternal;
+        }
 
         public abstract (float AoAMinForce, float AoAMaxForce) GetApproxAeroPeaks(Conditions conditions);
 

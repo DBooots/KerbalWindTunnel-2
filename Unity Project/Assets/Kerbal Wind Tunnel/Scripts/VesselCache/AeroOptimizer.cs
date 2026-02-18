@@ -19,6 +19,7 @@ namespace KerbalWindTunnel.VesselCache
         static readonly Unity.Profiling.ProfilerMarker s_findMin = new Unity.Profiling.ProfilerMarker("AeroOptimizer.FindMinAoA");
         static readonly Unity.Profiling.ProfilerMarker s_findLevel = new Unity.Profiling.ProfilerMarker("AeroOptimizer.FindLevelAoA");
         static readonly Unity.Profiling.ProfilerMarker s_findInput = new Unity.Profiling.ProfilerMarker("AeroOptimizer.FindStablePitchInput");
+        static readonly Unity.Profiling.ProfilerMarker s_findAoA = new Unity.Profiling.ProfilerMarker("AeroOptimizer.FindStableAoA");
 
         public static float FindMaxAoA(this AeroPredictor predictor, Conditions conditions, out float lift, float guess = float.NaN, float tolerance = defaultAoAOptTolerance)
         {
@@ -204,6 +205,36 @@ namespace KerbalWindTunnel.VesselCache
             BrentSearch solver = new BrentSearch(objectiveFunc, -1, 1, tolerance);
             SequentialBrentSearch(solver, (Mathf.Clamp01(guess - 0.3f), -1), (Mathf.Clamp01(guess + 0.3f), 1));
             succeeded = solver.Status == BrentSearchStatus.Success;
+            return solver;
+        }
+
+        public static float FindStableAoA(this AeroPredictor predictor, Conditions conditions, float pitchInput, float guess = float.NaN, bool dryTorque = false, float tolerance = defaultAoATolerance)
+        {
+            s_findAoA.Begin();
+            if (float.IsNaN(guess))
+                guess = 20 * Mathf.Sign(pitchInput) * Mathf.Deg2Rad;
+            IOptimizationMethod<double, double> optimizationMethod;
+            if (float.IsNaN(guess) || float.IsInfinity(guess))
+                guess = 0;
+            else
+                guess = Mathf.Clamp01(guess);
+            optimizationMethod = FindStableAoA_NoDerivative(predictor.SteadyAoAObjectiveFunc(conditions, pitchInput, dryTorque), guess, tolerance, (int)Mathf.Sign(pitchInput));
+            s_findAoA.End();
+
+            return (float)optimizationMethod.Solution;
+        }
+        private static IOptimizationMethod<double, double> FindStableAoA_NoDerivative(Func<double, double> objectiveFunc, float guess, float tolerance, int pitchInputSign)
+        {
+            float lowerBound = (pitchInputSign > 0 ? -10 : -90) * Mathf.Deg2Rad;
+            float upperBound = (pitchInputSign < 0 ? 10 : 90) * Mathf.Deg2Rad;
+            const float step = 10 * Mathf.Deg2Rad;
+            guess = Mathf.Clamp(guess, -90 * Mathf.Deg2Rad + step, 90 * Mathf.Deg2Rad - step);
+
+            BrentSearch solver = new BrentSearch(objectiveFunc, lowerBound, upperBound, tolerance);
+            SequentialBrentSearch(solver, (guess - step, lowerBound), (guess + step, upperBound));
+
+            if (solver.Status != BrentSearchStatus.Success)
+                solver.Solution = pitchInputSign >= 0 ? upperBound : lowerBound;
             return solver;
         }
 
