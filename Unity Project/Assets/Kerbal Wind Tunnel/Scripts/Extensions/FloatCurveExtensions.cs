@@ -7,6 +7,8 @@ namespace KerbalWindTunnel.Extensions
 {
     public static class FloatCurveExtensions
     {
+        public static readonly CubicSolver cubicSolver = new CubicSolver();
+
         public static FloatCurve ComputeFloatCurve(IEnumerable<float> keys, Func<float, float> func, float delta = 0.000001f)
             => ComputeFloatCurve(keys.Select(k => (k, false)), func, delta);
         public static FloatCurve ComputeFloatCurve(IEnumerable<(float value, bool continuousDerivative)> keys, Func<float, float> func, float delta = 0.000001f)
@@ -259,6 +261,86 @@ namespace KerbalWindTunnel.Extensions
             for (int i = 0; i < length; i++)
                 result.Add(sortedUniqueKeys[i], values[i], inTangents[i], outTangents[i]);
             return result;
+        }
+
+        public static FloatCurve Min(IEnumerable<FloatCurve> curves)
+        {
+            FloatCurve first = curves.FirstOrDefault();
+            foreach (FloatCurve curve in curves.Skip(1))
+                first = Min(first, curve);
+            return first;
+        }
+        public static FloatCurve Min(FloatCurve curveA, FloatCurve curveB)
+        {
+            // Min(A, B) = A - Max(A - B, 0)
+            // First we find A - B.
+            FloatCurve diff = Subtract(curveA, curveB);
+            // Find where zero-crossings exist so we can truncate below zero.
+            HashSet<float> zeroes = new HashSet<float>();
+            for (int i = diff.Curve.length - 2; i >= 0; i--)
+            {
+                ref Keyframe key0 = ref diff.Curve.keys[i];
+                ref Keyframe key1 = ref diff.Curve.keys[i + 1];
+                float t0 = key0.time;
+                float t1 = key1.time;
+                float dt = t0 - t1;
+
+                float m0 = key0.outTangent * dt;
+                float m1 = key1.inTangent * dt;
+
+                float a = 2 * key0.value + m0 + m1 - 2 * key1.value;
+                float b = -3 * key0.value - 2 * m0 - m1 + 3 * key1.value;
+                float c = m0;
+                float d = key0.value;
+
+                // SolveCubic will return between zero and three unique roots. a * x^3 + b * x^2 + c * x + d = 0
+                // These roots are in the normalized time space, t = (t - t1) / dt.
+                // We only care about roots within (0, 1) because the piecewise nature means any others don't actually affect the curve.
+                // We then denormalize them before adding to the list.
+                zeroes.UnionWith(cubicSolver.SolveCubic(a, b, c, d).Where(r => r > 0 && r < 1).Select(t => t * dt + t1));
+            }
+            
+            // Add keys for the zero crossings
+            foreach (float f in zeroes)
+            {
+                float tangent = diff.EvaluateDerivative(f);
+                diff.Add(f, 0, tangent, tangent);
+            }
+            // Truncate below zero. Values are set to zero and tangents truncated such that they cannot push the curve below zero.
+            // Also remove unnecessary keys (where value > 0 but Curve B does not contain it, or where value < 0 but Curve A does not contain it).
+            HashSet<float> aTimes = new HashSet<float>(curveA.ExtractTimes());
+            HashSet<float> bTimes = new HashSet<float>(curveB.ExtractTimes());
+            HashSet<float> times = new HashSet<float>(diff.ExtractTimes());
+            List<Keyframe> keys = diff.Curve.keys.ToList();
+            for (int i = keys.Count - 1; i >= 0; i--)
+            {
+                Keyframe key = keys[i];
+                if (key.value < 0)
+                {
+                    // Remove the key entirely as there will be a new key for any zero crossing.
+                    keys.RemoveAt(i);
+                    if (!aTimes.Contains(key.value))
+                        times.Remove(key.value);
+                }
+                else if (key.value == 0)
+                {
+                    key.inTangent = Mathf.Min(key.inTangent, 0);
+                    key.outTangent = Mathf.Max(key.outTangent, 0);
+                    keys[i] = key;
+                }
+                // key.value must be > 0
+                // If the key value is > 0 but not in curveB, that means that it is a curveA keyframe
+                // but curveB is lower so it shouldn't be a keyframe in the end.
+                // We don't remove the keyframe entirely because that information is needed to reconstruct curveB from curveA - diff
+                else if (!bTimes.Contains(key.time))
+                    times.Remove(key.time);
+            }
+            diff.Curve.keys = keys.ToArray();
+            // We now have Max(A - B, 0), so subtract that from A.
+            // Min(A, B) = A - Max(A - B, 0)
+            diff = Subtract(curveA, Enumerable.Repeat(diff, 1), times);
+
+            return diff;
         }
 
         public static void Scale(this FloatCurve curve, float scalar)

@@ -81,6 +81,7 @@
     <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\DataGenerators\GraphFactory.cs" />
     <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\DataGenerators\VelCurve.cs" />
     <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\DataGenerators\TaskProgressTracker.cs" />
+    <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\Extensions\CubicSolver.cs" />
     <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\Extensions\DelegateFactory.cs" />
     <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\Extensions\FloatCurve2.cs" />
     <Compile Include="Assets\Kerbal Wind Tunnel\Scripts\Extensions\FloatCurve2Extensions.cs" />
