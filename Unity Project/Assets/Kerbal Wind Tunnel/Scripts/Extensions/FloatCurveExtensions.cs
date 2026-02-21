@@ -419,7 +419,7 @@ namespace KerbalWindTunnel.Extensions
             result.ScaleTimes(scalar);
             return result;
         }
-        public static FloatCurve TimeScaledBy(FloatCurve curve, Func<Keyframe, float> scalarFunc)
+        public static FloatCurve TimesScaledBy(FloatCurve curve, Func<Keyframe, float> scalarFunc)
         {
             if (curve == null)
                 return null;
