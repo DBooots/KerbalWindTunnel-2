@@ -34,6 +34,7 @@ namespace KerbalWindTunnel.VesselCache
                     {
                         if (outstandingKeys.Contains(machCurve))
                         {
+                            // Write the mach scalar curve
                             List<(string, object)> result = new List<(string, object)> { ("machScalar", machCurve) };
                             List<FloatCurve> liftCurves = new List<FloatCurve>();
                             List<FloatCurve> ctrlCurves = new List<FloatCurve>();
@@ -44,10 +45,11 @@ namespace KerbalWindTunnel.VesselCache
                                 else
                                     liftCurves.Add(coefCurve);
                             }
+                            // Write the lift coefficient curve and control delta lift coefficient curve
                             if (liftCurves.Count > 0)
-                                result.Add(("liftCurve", FloatCurveExtensions.Superposition(liftCurves)));
+                                result.Add(("liftCurve", FloatCurveExtensions.TimesScaledBy(FloatCurveExtensions.Superposition(liftCurves), Mathf.Rad2Deg)));
                             if (ctrlCurves.Count > 0)
-                                result.Add(("ctrlCurve", FloatCurveExtensions.Superposition(ctrlCurves)));
+                                result.Add(("ctrlCurve", FloatCurveExtensions.TimesScaledBy(FloatCurveExtensions.Superposition(ctrlCurves), Mathf.Rad2Deg)));
                             outstandingKeys.Remove(machCurve);
                             yield return result;
                         }
@@ -63,9 +65,13 @@ namespace KerbalWindTunnel.VesselCache
                 {
                     ("numCurves", liftData.Count),
                     ("liftData", liftData),
+                    // Write the AoA at which max lift is obtained (a FloatCurve with respect to Mach number)
                     ("maxLiftAoA", maxLiftAoA),
+                    // Write the max AoA which is attainable using control surfaces only (a FloatCurve with respect to Mach number)
                     ("maxStableAoA", maxStableAoA),
+                    // Write the max targetable AoA, which is the min of maxLiftAoA and maxStableAoA (a FloatCurve with respect to Mach number)
                     ("maxAoA", FloatCurveExtensions.Min(maxLiftAoA, maxStableAoA)),
+                    // Write the AoA at which max L/D is obtained (a FloatCurve with respect to Mach number (with some assumption about altitude))
                     ("maxLDAoA", FloatCurveExtensions.ScaledBy(GetMaxLDAoA(vessel), Mathf.Rad2Deg))
                 };
 
