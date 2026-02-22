@@ -18,12 +18,13 @@ namespace KerbalWindTunnel.VesselCache
             {
                 stringBuilder.Clear();
 
-                var curveSets = vessel.CurveSets;
-                var curveSetDict = CharacterizedVessel.CompileCurveSetsForExport(curveSets);
+                List<(FloatCurve machCurve, FloatCurve coefCurve)>[] curveSets = vessel.CurveSets;
+                Dictionary<FloatCurve, (string name, List<(FloatCurve coefCurve, string name)> curveList)> curveSetDict =
+                    CharacterizedVessel.CompileCurveSetsForExport(curveSets);
                 HashSet<FloatCurve> outstandingKeys = new HashSet<FloatCurve>(curveSetDict.Keys, FloatCurveComparer.Instance);
-                //HashSet<FloatCurve> lift = new HashSet<FloatCurve>(CharacterizedVessel._liftIndices.
-                    //SelectMany(i => curveSets[i]).Select(cs => cs.coefCurve),
-                    //FloatCurveComparer.Instance);
+                HashSet<FloatCurve> lift = new HashSet<FloatCurve>(CharacterizedVessel._liftIndices.
+                    SelectMany(i => curveSets[i]).Select(cs => cs.coefCurve),
+                    FloatCurveComparer.Instance);
                 HashSet<FloatCurve> controls = new HashSet<FloatCurve>(CharacterizedVessel._ctrlIndices.Intersect(CharacterizedVessel._liftIndices).
                     SelectMany(i => curveSets[i]).Select(cs => cs.coefCurve),
                     FloatCurveComparer.Instance);
@@ -40,6 +41,8 @@ namespace KerbalWindTunnel.VesselCache
                             List<FloatCurve> ctrlCurves = new List<FloatCurve>();
                             foreach ((FloatCurve coefCurve, _) in curveSetDict[machCurve].curveList)
                             {
+                                if (!lift.Contains(coefCurve))
+                                    continue;
                                 if (controls.Contains(coefCurve))
                                     ctrlCurves.Add(coefCurve);
                                 else
