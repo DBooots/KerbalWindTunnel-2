@@ -142,6 +142,9 @@ namespace KerbalWindTunnel.Extensions
 
         public static FloatCurve Superposition(IEnumerable<FloatCurve> curves)
         {
+            if (!curves.Skip(1).Any())
+                return curves.FirstOrDefault()?.Clone();
+
             SortedSet<float> keys_ = new SortedSet<float>();
             foreach (FloatCurve curve in curves)
             {
@@ -201,6 +204,9 @@ namespace KerbalWindTunnel.Extensions
             => Subtract(minuend, Enumerable.Repeat(subtrahend, 1));
         public static FloatCurve Subtract(FloatCurve minuend, IEnumerable<FloatCurve> subtrahends)
         {
+            if (subtrahends == null || !subtrahends.Any())
+                return minuend.Clone();
+
             SortedSet<float> keys_ = new SortedSet<float>(minuend.ExtractTimes());
             foreach (FloatCurve curve in subtrahends)
             {
@@ -265,6 +271,9 @@ namespace KerbalWindTunnel.Extensions
 
         public static FloatCurve Min(IEnumerable<FloatCurve> curves)
         {
+            if (!curves.Skip(1).Any())
+                return curves.FirstOrDefault()?.Clone();
+
             FloatCurve first = curves.FirstOrDefault();
             foreach (FloatCurve curve in curves.Skip(1))
                 first = Min(first, curve);
