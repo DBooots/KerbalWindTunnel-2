@@ -140,8 +140,14 @@ namespace KerbalWindTunnel.Extensions
             return a * value0 + b * m0 + c * m1 + d * value1;
         }
 
+        public static FloatCurve Superposition(FloatCurve curve1, FloatCurve curve2)
+            => Superposition(Enumerable.Repeat(curve1, 1).Union(Enumerable.Repeat(curve2, 1)));
         public static FloatCurve Superposition(IEnumerable<FloatCurve> curves)
         {
+            if (curves == null)
+                throw new ArgumentNullException(nameof(curves));
+            if (!curves.Any())
+                throw new InvalidOperationException("Cannot superpose an empty collection.");
             if (!curves.Skip(1).Any())
                 return curves.FirstOrDefault()?.Clone();
 
@@ -156,6 +162,15 @@ namespace KerbalWindTunnel.Extensions
         }
         public static FloatCurve Superposition(IEnumerable<FloatCurve> curves, IEnumerable<float> keys)
         {
+            if (curves == null)
+                throw new ArgumentNullException(nameof(curves));
+            if (!curves.Any())
+                throw new InvalidOperationException("Cannot operate on an empty collection.");
+            if (keys == null)
+                throw new ArgumentNullException(nameof(keys));
+            if (!keys.Any())
+                throw new ArgumentException("Cannot create a FloatCurve with no keys.");
+
             float[] keys_ = keys.Distinct().ToArray();
             Array.Sort(keys_);
             return Superposition(curves, keys_);
@@ -163,6 +178,15 @@ namespace KerbalWindTunnel.Extensions
 
         public static FloatCurve Superposition(IEnumerable<FloatCurve> curves, IList<float> sortedUniqueKeys)
         {
+            if (curves == null)
+                throw new ArgumentNullException(nameof(curves));
+            if (!curves.Any())
+                throw new InvalidOperationException("Cannot operate on an empty collection.");
+            if (sortedUniqueKeys == null)
+                throw new ArgumentNullException(nameof(sortedUniqueKeys));
+            if (sortedUniqueKeys.Count == 0)
+                throw new ArgumentException("Cannot create a FloatCurve with no keys.");
+
             FloatCurve result = new FloatCurve();
             int length = sortedUniqueKeys.Count;
             float[] values = new float[length];
@@ -204,6 +228,8 @@ namespace KerbalWindTunnel.Extensions
             => Subtract(minuend, Enumerable.Repeat(subtrahend, 1));
         public static FloatCurve Subtract(FloatCurve minuend, IEnumerable<FloatCurve> subtrahends)
         {
+            if (minuend == null)
+                throw new ArgumentNullException(nameof(minuend));
             if (subtrahends == null || !subtrahends.Any())
                 return minuend.Clone();
 
@@ -218,6 +244,15 @@ namespace KerbalWindTunnel.Extensions
         }
         public static FloatCurve Subtract(FloatCurve minuend, IEnumerable<FloatCurve> subtrahends, IEnumerable<float> keys)
         {
+            if (minuend == null)
+                throw new ArgumentNullException(nameof(minuend));
+            if (subtrahends == null)
+                subtrahends = Enumerable.Empty<FloatCurve>();
+            if (keys == null)
+                throw new ArgumentNullException(nameof(keys));
+            if (!keys.Any())
+                throw new ArgumentException("Cannot create a FloatCurve with no keys.");
+
             float[] keys_ = keys.Distinct().ToArray();
             Array.Sort(keys_);
             return Subtract(minuend, subtrahends, keys_);
@@ -227,6 +262,12 @@ namespace KerbalWindTunnel.Extensions
         {
             if (minuend == null)
                 throw new ArgumentNullException(nameof(minuend));
+            if (subtrahends == null)
+                subtrahends= Enumerable.Empty<FloatCurve>();
+            if (sortedUniqueKeys == null)
+                throw new ArgumentNullException(nameof(sortedUniqueKeys));
+            if (sortedUniqueKeys.Count == 0)
+                throw new ArgumentException("Cannot create a FloatCurve with no keys.");
 
             FloatCurve result = new FloatCurve();
             int length = sortedUniqueKeys.Count;
@@ -271,6 +312,10 @@ namespace KerbalWindTunnel.Extensions
 
         public static FloatCurve Min(IEnumerable<FloatCurve> curves)
         {
+            if (curves == null)
+                throw new ArgumentNullException(nameof(curves));
+            if (!curves.Any())
+                throw new InvalidOperationException("Cannot operate on an empty collection.");
             if (!curves.Skip(1).Any())
                 return curves.FirstOrDefault()?.Clone();
 
@@ -281,6 +326,11 @@ namespace KerbalWindTunnel.Extensions
         }
         public static FloatCurve Min(FloatCurve curveA, FloatCurve curveB)
         {
+            if (curveA == null)
+                throw new ArgumentNullException(nameof(curveA));
+            if (curveB == null)
+                throw new ArgumentNullException(nameof(curveB));
+
             // Min(A, B) = A - Max(A - B, 0)
             // First we find A - B.
             FloatCurve diff = Subtract(curveA, curveB);
