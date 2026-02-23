@@ -70,10 +70,12 @@
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>copy /Y "$(TargetDir)$(ProjectName).*" "C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program Debug\GameData\WindTunnel\Plugins\"
+move "C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program Debug\GameData\WindTunnel\Plugins\$(ProjectName).dll" "C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program Debug\GameData\WindTunnel\Plugins\$(ProjectName).dll.noautoload"
 
 if not $(ConfigurationName) == Release (EXIT)
 
 cd $(ProjectDir)..
-copy /Y "$(TargetDir)$(ProjectName).*" "Builds\WindTunnel\Plugins\"</PostBuildEvent>
+copy /Y "$(TargetDir)$(ProjectName).*" "Builds\WindTunnel\Plugins\"
+move "Builds\WindTunnel\Plugins\$(ProjectName).dll" "Builds\WindTunnel\Plugins\$(ProjectName).dll.noautoload"</PostBuildEvent>
   </PropertyGroup>
 </Project>

@@ -18,8 +18,13 @@ namespace KerbalWindTunnel
 
             string path = typeof(MiniExcelWrapper).Assembly.Location;
             char pathChar = Path.DirectorySeparatorChar;
-
-            string dir = Directory.GetFiles(path.Substring(0, path.LastIndexOf(pathChar)), "*.dll", SearchOption.AllDirectories).First(s => s.Contains("MiniExcelDomainWorker"));
+            
+            string[] dirs = Directory.GetFiles(path.Substring(0, path.LastIndexOf(pathChar)), "*.dll*", SearchOption.AllDirectories);
+            static bool ContainsNameString(string filename) => filename.Contains("MiniExcelDomainWorker");
+            // Use the autoloaded one only if we absolutely have to. Prefer the ".dll.noautoload" variant.
+            // People may not have deleted the earlier .dll extension one and that one won't be updated.
+            string dir = dirs.Where(s => !s.EndsWith(".dll", StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault(ContainsNameString) ??
+                dirs.FirstOrDefault(ContainsNameString);
             worker = (IDomainWriter)excelDomain.CreateInstanceFromAndUnwrap(dir, "MiniExcelDomain.MiniExcelWorker");
 
             path = string.Join($"{pathChar}", path.Substring(0, path.LastIndexOf(pathChar)), "References");
